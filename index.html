@@ -1,16 +1,49 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Gradientes Animados 3D</title>
-    <!-- Tailwind CSS para el diseño de la interfaz de usuario -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    
+    <title>Generador de Gradientes Animados 3D – WebGL</title>
+    <meta
+      name="description"
+      content="Generador interactivo y gratuito de degradados animados en 3D con WebGL. Crea texturas fluidas y granuladas y exporta imágenes en alta resolución hasta 4K."
+    />
+    <link rel="canonical" href="https://gradients.juangarcia.ch/" />
+
+    <!-- Meta Tags de Facebook / Open Graph -->
+    <meta property="og:url" content="https://gradients.juangarcia.ch/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:site_name" content="Generador de Gradientes Animados 3D" />
+    <meta
+      property="og:title"
+      content="Generador de Gradientes Animados 3D – WebGL"
+    />
+    <meta
+      property="og:description"
+      content="Crea degradados animados con ruido y grano en tiempo real. Exporta imágenes 4K o bucles de video sin registros."
+    />
+    <meta
+      property="og:image"
+      content="https://gradients.juangarcia.ch/preview.jpg"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Iconos Lucide para una interfaz moderna -->
+    <!-- Iconos Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Three.js para renderizar la malla 3D y los Shaders con alto rendimiento -->
+    <!-- Three.js principal -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Google Fonts - Space Grotesk para esa tipografía retro-futurista de código de barra lateral -->
+    <!-- Orbit Controls para rotación e interacción 3D de cámara -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -18,7 +51,7 @@
     <style>
         body {
             font-family: 'Space Grotesk', sans-serif;
-            background-color: #0b0c10;
+            background-color: #07080c;
             overflow: hidden;
             margin: 0;
             user-select: none;
@@ -26,7 +59,6 @@
         .mono-font {
             font-family: 'Space Mono', monospace;
         }
-        /* Custom scrollbar para la barra de configuración */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -40,7 +72,6 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.25);
         }
-        /* Estilos para inputs de rango personalizados */
         input[type="range"] {
             -webkit-appearance: none;
             appearance: none;
@@ -63,162 +94,235 @@
             transform: scale(1.2);
             background: #ffffff;
         }
+        .folder-content {
+            transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+            max-height: 1000px;
+            opacity: 1;
+            overflow: hidden;
+        }
+        .folder-content.collapsed {
+            max-height: 0 !important;
+            opacity: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
     </style>
-</head>
-<body class="relative w-screen h-screen">
+  </head>
+  <body class="relative w-screen h-screen">
 
     <!-- Canvas de renderizado para WebGL -->
     <canvas id="webgl-canvas" class="absolute inset-0 w-full h-full z-0"></canvas>
 
-    <!-- Marca de agua / Título de marca minimalista en la esquina superior izquierda -->
-    <div class="absolute top-6 left-6 z-10 text-white pointer-events-none mix-blend-difference">
-        <h1 class="text-xl font-bold tracking-wider mono-font opacity-85">MESH.GRADIENT</h1>
-        <p class="text-[10px] tracking-widest text-slate-400 uppercase">Interactive Noise Generator</p>
-    </div>
+    <!-- Pie de página / Créditos y Acerca De -->
+    <footer class="absolute bottom-6 left-6 z-10 text-white/70 text-xs flex flex-col gap-2 pointer-events-auto mix-blend-difference select-text">
+        <div class="flex items-center gap-1">
+            <span>Desarrollado con Three.js</span>
+            <span class="ml-1 opacity-60">2024–2026</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="about-btn" class="underline hover:text-white transition flex items-center gap-1 pointer-events-auto text-left">
+                <i data-lucide="info" class="w-3.5 h-3.5 inline"></i>
+                <span>Acerca de la herramienta</span>
+            </button>
+            <span class="opacity-40">•</span>
+            <a href="https://networkedartifacts.com/airlab" target="_blank" rel="noopener" class="underline hover:text-white transition font-medium">Check Air Lab</a>
+        </div>
+    </footer>
 
-    <!-- Botón de información "About" en la esquina inferior izquierda -->
-    <button id="about-btn" class="absolute bottom-6 left-6 z-10 bg-black/40 backdrop-blur-md hover:bg-white/10 text-white border border-white/10 rounded-full px-4 py-2 text-sm flex items-center gap-2 transition duration-300">
-        <i data-lucide="info" class="w-4 h-4"></i>
-        <span>About this tool</span>
-    </button>
-
-    <!-- CONTENEDOR DE CONFIGURACIÓN LATERAL (Fiel recreación de tu primera referencia) -->
+    <!-- BARRA LATERAL DE CONFIGURACIÓN -->
     <div id="gui-panel" class="absolute top-6 right-6 z-10 w-96 max-h-[calc(100vh-3rem)] bg-[#15161e]/90 backdrop-blur-xl border border-white/10 rounded-xl text-slate-300 text-sm overflow-y-auto shadow-2xl transition-all duration-300">
         
-        <!-- Cabecera del panel -->
+        <!-- Header del panel principal -->
         <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
-            <span class="mono-font font-bold text-xs tracking-wider text-slate-400 uppercase">Gradient Configuration</span>
+            <span id="panel-title" class="mono-font font-bold text-xs tracking-wider text-slate-400 uppercase">Configuración de Gradiente</span>
             <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span class="text-[10px] uppercase tracking-widest text-emerald-500 font-bold mono-font">LIVE Shader</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                <span class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold mono-font">LIVE</span>
             </div>
         </div>
 
-        <!-- Secciones Colapsables de Configuración -->
-        <div class="p-5 space-y-6">
+        <div class="p-5 space-y-4">
 
-            <!-- SECCIÓN 1: MESH -->
-            <div class="space-y-3">
-                <div class="flex items-center justify-between text-xs text-slate-400 tracking-wider uppercase mono-font">
-                    <span>Mesh Settings</span>
-                    <i data-lucide="grid" class="w-3.5 h-3.5"></i>
-                </div>
-                <div class="flex items-center justify-between bg-[#1f2029]/60 p-3 rounded-lg border border-white/5">
-                    <span class="text-xs">Wireframe Mode</span>
-                    <button id="wireframe-toggle" class="relative w-11 h-6 bg-slate-700 rounded-full transition-colors duration-300 focus:outline-none">
-                        <span id="wireframe-dot" class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300"></span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- SECCIÓN 2: COLORES -->
-            <div class="space-y-3">
-                <div class="flex items-center justify-between text-xs text-slate-400 tracking-wider uppercase mono-font">
-                    <span>Colors</span>
-                    <i data-lucide="palette" class="w-3.5 h-3.5"></i>
-                </div>
-                <div class="space-y-2">
-                    <!-- Color 1 -->
-                    <div class="flex items-center justify-between bg-[#1f2029]/40 p-2 rounded-lg border border-white/5">
-                        <span class="text-xs text-slate-400">Color 1</span>
-                        <div class="flex items-center gap-2">
-                            <span id="hex-1" class="mono-font text-xs uppercase text-slate-300">#0ecac6</span>
-                            <input type="color" id="col-1" value="#0ecac6" class="w-8 h-8 rounded-md border-0 cursor-pointer bg-transparent">
-                        </div>
-                    </div>
-                    <!-- Color 2 -->
-                    <div class="flex items-center justify-between bg-[#1f2029]/40 p-2 rounded-lg border border-white/5">
-                        <span class="text-xs text-slate-400">Color 2</span>
-                        <div class="flex items-center gap-2">
-                            <span id="hex-2" class="mono-font text-xs uppercase text-slate-300">#219ebc</span>
-                            <input type="color" id="col-2" value="#219ebc" class="w-8 h-8 rounded-md border-0 cursor-pointer bg-transparent">
-                        </div>
-                    </div>
-                    <!-- Color 3 -->
-                    <div class="flex items-center justify-between bg-[#1f2029]/40 p-2 rounded-lg border border-white/5">
-                        <span class="text-xs text-slate-400">Color 3</span>
-                        <div class="flex items-center gap-2">
-                            <span id="hex-3" class="mono-font text-xs uppercase text-slate-300">#023047</span>
-                            <input type="color" id="col-3" value="#023047" class="w-8 h-8 rounded-md border-0 cursor-pointer bg-transparent">
-                        </div>
-                    </div>
-                    <!-- Color 4 -->
-                    <div class="flex items-center justify-between bg-[#1f2029]/40 p-2 rounded-lg border border-white/5">
-                        <span class="text-xs text-slate-400">Color 4</span>
-                        <div class="flex items-center gap-2">
-                            <span id="hex-4" class="mono-font text-xs uppercase text-slate-300">#ffb703</span>
-                            <input type="color" id="col-4" value="#ffb703" class="w-8 h-8 rounded-md border-0 cursor-pointer bg-transparent">
-                        </div>
-                    </div>
-                    <!-- Color 5 -->
-                    <div class="flex items-center justify-between bg-[#1f2029]/40 p-2 rounded-lg border border-white/5">
-                        <span class="text-xs text-slate-400">Color 5</span>
-                        <div class="flex items-center gap-2">
-                            <span id="hex-5" class="mono-font text-xs uppercase text-slate-300">#fb8500</span>
-                            <input type="color" id="col-5" value="#fb8500" class="w-8 h-8 rounded-md border-0 cursor-pointer bg-transparent">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Botón de Colores Aleatorios -->
-                <button id="randomize-btn" class="w-full mt-2 bg-white text-slate-900 hover:bg-slate-200 py-2 px-4 rounded-lg font-medium text-xs tracking-wider uppercase transition duration-200 flex items-center justify-center gap-2">
-                    <i data-lucide="sparkles" class="w-4 h-4"></i>
-                    Randomize Colors
+            <!-- FOLDER: PRESETS -->
+            <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
+                <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
+                    <span>Ajustes Preestablecidos</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 transform transition-transform duration-200"></i>
                 </button>
-            </div>
-
-            <!-- SECCIÓN 3: NOISE (RUIDO Y DEFORMACIÓN) -->
-            <div class="space-y-4">
-                <div class="flex items-center justify-between text-xs text-slate-400 tracking-wider uppercase mono-font">
-                    <span>Noise & Wave Controls</span>
-                    <i data-lucide="activity" class="w-3.5 h-3.5"></i>
-                </div>
-                <!-- Amount/Fuerza -->
-                <div class="space-y-1">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-slate-400">Amount / Height</span>
-                        <span id="val-amount" class="mono-font text-slate-200">0.25</span>
+                <div class="folder-content space-y-3 pt-2">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs text-slate-400 uppercase mono-font">Seleccionar Preset</label>
+                        <select id="preset-select" class="w-full bg-[#20212a] border border-white/10 rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
+                            <option value="default">Base Predeterminada</option>
+                            <option value="sunrise">Amanecer de Neón</option>
+                            <option value="lagoon">Laguna de Coral</option>
+                            <option value="ember">Ascuas Ardientes</option>
+                            <option value="soft-grid">Malla Suave</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
                     </div>
-                    <input type="range" id="noise-amount" min="0.0" max="1.5" step="0.01" value="0.45" class="w-full">
-                </div>
-                <!-- Speed/Velocidad -->
-                <div class="space-y-1">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-slate-400">Motion Speed</span>
-                        <span id="val-speed" class="mono-font text-slate-200">0.02</span>
-                    </div>
-                    <input type="range" id="noise-speed" min="0.0" max="0.1" step="0.001" value="0.015" class="w-full">
-                </div>
-                <!-- Frequency/Frecuencia -->
-                <div class="space-y-1">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-slate-400">Frequency</span>
-                        <span id="val-freq" class="mono-font text-slate-200">3.0</span>
-                    </div>
-                    <input type="range" id="noise-frequency" min="0.5" max="8.0" step="0.1" value="2.2" class="w-full">
-                </div>
-                <!-- Densidad de grano (Noise Grain) -->
-                <div class="space-y-1">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-slate-400">Grainy Texture</span>
-                        <span id="val-grain" class="mono-font text-slate-200">0.12</span>
-                    </div>
-                    <input type="range" id="noise-grain" min="0.0" max="0.6" step="0.01" value="0.18" class="w-full">
-                </div>
-            </div>
-
-            <!-- SECCIÓN 4: EXPORTACIÓN -->
-            <div class="space-y-3 pt-2">
-                <div class="flex items-center justify-between text-xs text-slate-400 tracking-wider uppercase mono-font">
-                    <span>Export Asset</span>
-                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <button id="export-png-1k" class="bg-[#1f2029] hover:bg-white/10 text-white py-2 px-3 rounded-lg border border-white/5 text-xs font-medium transition duration-200 flex items-center justify-center gap-1">
-                        Export Full HD
+                    <button id="reset-preset-btn" class="w-full bg-[#1f2029] hover:bg-white/10 text-white border border-white/5 py-1.5 rounded text-xs transition">
+                        Restablecer Valores Base
                     </button>
-                    <button id="export-png-4k" class="bg-[#1f2029] hover:bg-white/10 text-white py-2 px-3 rounded-lg border border-white/5 text-xs font-medium transition duration-200 flex items-center justify-center gap-1">
-                        Export 4K UHD
+                </div>
+            </div>
+
+            <!-- FOLDER: MESH -->
+            <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
+                <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
+                    <span>Estructura de Malla</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 transform transition-transform duration-200"></i>
+                </button>
+                <div class="folder-content space-y-3 pt-2">
+                    <div class="flex items-center justify-between bg-[#1f2029]/60 p-2.5 rounded border border-white/5">
+                        <span class="text-xs">Modo Wireframe</span>
+                        <button id="wireframe-toggle" class="relative w-11 h-6 bg-slate-700 rounded-full transition-colors duration-300">
+                            <span id="wireframe-dot" class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300"></span>
+                        </button>
+                    </div>
+                    <!-- Resolución de la malla -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Subdivisiones de Malla</span>
+                            <span id="mesh-segments-val" class="mono-font text-slate-200">200</span>
+                        </div>
+                        <input type="range" id="mesh-segments" min="50" max="300" step="10" value="200" class="w-full">
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOLDER: COLORS -->
+            <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
+                <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
+                    <span>Paleta de Colores</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 transform transition-transform duration-200"></i>
+                </button>
+                <div class="folder-content space-y-2 pt-2">
+                    <!-- Colores individuales -->
+                    <div id="colors-container" class="space-y-2">
+                        <!-- Renderizado dinámicamente mediante JS -->
+                    </div>
+                    <button id="randomize-btn" class="w-full mt-2 bg-white text-slate-900 hover:bg-slate-200 py-2 px-4 rounded font-medium text-xs tracking-wider uppercase transition flex items-center justify-center gap-2">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        Aleatorizar Colores
+                    </button>
+                </div>
+            </div>
+
+            <!-- FOLDER: NOISE -->
+            <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
+                <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
+                    <span>Ruido y Ondas</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 transform transition-transform duration-200"></i>
+                </button>
+                <div class="folder-content space-y-4 pt-2">
+                    <!-- Intensidad -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Amplitud / Altura</span>
+                            <span id="val-amount" class="mono-font text-slate-200">0.20</span>
+                        </div>
+                        <input type="range" id="noise-amount" min="0.0" max="1.5" step="0.01" value="0.20" class="w-full">
+                    </div>
+                    <!-- Velocidad -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Velocidad de Flujo</span>
+                            <span id="val-speed" class="mono-font text-slate-200">0.02</span>
+                        </div>
+                        <input type="range" id="noise-speed" min="0.0" max="0.1" step="0.001" value="0.02" class="w-full">
+                    </div>
+                    <!-- Frecuencia X -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Frecuencia Horizontal (X)</span>
+                            <span id="val-freq-x" class="mono-font text-slate-200">3.0</span>
+                        </div>
+                        <input type="range" id="noise-freq-x" min="0.5" max="10.0" step="0.1" value="3.0" class="w-full">
+                    </div>
+                    <!-- Frecuencia Y -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Frecuencia Vertical (Y)</span>
+                            <span id="val-freq-y" class="mono-font text-slate-200">6.0</span>
+                        </div>
+                        <input type="range" id="noise-freq-y" min="0.5" max="10.0" step="0.1" value="6.0" class="w-full">
+                    </div>
+                    <!-- Rugosidad de Grano -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Densidad de Grano</span>
+                            <span id="val-grain" class="mono-font text-slate-200">0.15</span>
+                        </div>
+                        <input type="range" id="noise-grain" min="0.0" max="0.5" step="0.01" value="0.15" class="w-full">
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOLDER: CAMERA -->
+            <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
+                <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
+                    <span>Perspectiva de Cámara</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 transform transition-transform duration-200"></i>
+                </button>
+                <div class="folder-content space-y-3 pt-2">
+                    <div class="flex items-center justify-between bg-[#1f2029]/60 p-2.5 rounded border border-white/5">
+                        <span class="text-xs">Interactuar (Rotar / Órbita)</span>
+                        <button id="orbit-toggle" class="relative w-11 h-6 bg-indigo-600 rounded-full transition-colors duration-300">
+                            <span id="orbit-dot" class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full translate-x-5 transition-transform duration-300"></span>
+                        </button>
+                    </div>
+                    <button id="reset-camera-btn" class="w-full bg-[#1f2029] hover:bg-white/10 text-white border border-white/5 py-1.5 rounded text-xs transition">
+                        Restablecer Ángulo de Cámara
+                    </button>
+                </div>
+            </div>
+
+            <!-- FOLDER: IMAGE EXPORT -->
+            <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
+                <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
+                    <span>Exportar Imagen</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 transform transition-transform duration-200"></i>
+                </button>
+                <div class="folder-content space-y-3 pt-2">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs text-slate-400 uppercase mono-font">resolución</label>
+                        <select id="export-res-select" class="bg-[#1f2029] border border-white/5 text-xs text-white p-2 rounded focus:outline-none">
+                            <option value="1080p">Full HD (1920x1080)</option>
+                            <option value="4k">4K Ultra HD (3840x2160)</option>
+                        </select>
+                    </div>
+                    <button id="export-img-btn" class="w-full bg-slate-200 hover:bg-white text-slate-950 font-bold py-2 rounded text-xs tracking-wider uppercase transition flex items-center justify-center gap-1">
+                        Exportar Imagen PNG
+                    </button>
+                </div>
+            </div>
+
+            <!-- FOLDER: VIDEO EXPORT -->
+            <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
+                <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
+                    <span>Exportar Video (Bucle)</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 transform transition-transform duration-200"></i>
+                </button>
+                <div class="folder-content space-y-3 pt-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] text-slate-400 uppercase mono-font">resolución</label>
+                            <select id="video-res-select" class="bg-[#1f2029] border border-white/5 text-xs text-white p-1.5 rounded">
+                                <option value="720p">720p</option>
+                                <option value="1080p">1080p</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] text-slate-400 uppercase mono-font">duración (s)</label>
+                            <input type="number" id="video-duration" min="2" max="15" value="5" class="bg-[#1f2029] border border-white/5 text-xs text-white p-1.5 rounded focus:outline-none">
+                        </div>
+                    </div>
+                    <button id="record-video-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded text-xs tracking-wider uppercase transition flex items-center justify-center gap-1">
+                        <i data-lucide="video" class="w-4 h-4"></i>
+                        <span>Iniciar Grabación</span>
                     </button>
                 </div>
             </div>
@@ -227,9 +331,9 @@
 
         <!-- Botón para Compartir Enlace -->
         <div class="px-5 pb-5 pt-2">
-            <button id="copy-link-btn" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-2.5 rounded-lg text-xs tracking-wider uppercase transition duration-200 flex items-center justify-center gap-2">
+            <button id="copy-link-btn" class="w-full bg-[#1f2029] hover:bg-[#2a2b38] text-white font-medium py-2.5 rounded-lg text-xs tracking-wider uppercase border border-white/10 transition flex items-center justify-center gap-2">
                 <i data-lucide="link" class="w-4 h-4"></i>
-                Copy Config Link
+                <span>Copiar Enlace de Configuración</span>
             </button>
         </div>
     </div>
@@ -237,209 +341,296 @@
     <!-- NOTIFICACIÓN DE COPIADO AL PORTAPAPELES -->
     <div id="toast" class="absolute bottom-6 right-6 z-30 transform translate-y-20 opacity-0 bg-emerald-500 text-slate-900 font-bold px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 transition-all duration-300 ease-out pointer-events-none">
         <i data-lucide="check-circle" class="w-5 h-5"></i>
-        <span>¡Enlace de configuración copiado con éxito!</span>
+        <span>¡Enlace copiado al portapapeles!</span>
     </div>
 
-    <!-- MODAL INFORMATIVO "ABOUT" (Idéntico a tu segunda referencia) -->
-    <div id="about-modal" class="fixed inset-0 z-50 bg-[#07080c]/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <!-- DIÁLOGO INFORMATIVO "ABOUT" -->
+    <dialog id="about-modal" class="fixed inset-0 z-50 bg-[#07080c]/85 backdrop-blur-md hidden flex items-center justify-center p-4 w-full h-full border-0">
         <div class="w-full max-w-xl bg-[#1b1c24] border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <!-- Header del Modal -->
             <div class="bg-[#21222b] px-6 py-4 border-b border-white/5 flex items-center justify-between">
-                <span class="mono-font text-xs tracking-widest text-slate-400 uppercase font-bold">About this tool</span>
+                <span class="mono-font text-xs tracking-widest text-slate-400 uppercase font-bold">Acerca de la herramienta</span>
                 <button id="close-modal-x" class="text-slate-400 hover:text-white transition">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
-            <!-- Contenido Principal -->
             <div class="p-8 space-y-6">
                 <div class="space-y-3">
                     <h2 class="text-2xl md:text-3xl font-bold text-white tracking-tight leading-snug">
-                        Create animated gradients.<br>Export images. Share them.
+                        Crea gradientes animados.<br>Exporta imágenes y video. Compártelos.
                     </h2>
                     <p class="text-sm text-slate-400 leading-relaxed">
-                        Un generador interactivo y libre de degradados tridimensionales fluidos. Diseñado para crear hermosos fondos orgánicos y con grano para tus proyectos o fondos de pantalla directamente en el navegador. Modifica colores, distorsiones de ruido y dinámicas de movimiento en tiempo real para obtener texturas fluidas perfectas.
+                        Un generador interactivo y gratuito de degradados animados en 3D directamente en el navegador. Modifica colores, distorsión, frecuencias de ondas de ruido y dinámicas de movimiento en tiempo real para obtener texturas fluidas y orgánicas sedosas con grano estético, luego exporta a alta resolución.
                     </p>
                 </div>
 
-                <!-- Lista de Características -->
-                <div class="space-y-2.5">
-                    <div class="flex items-start gap-3 bg-[#242530]/50 p-3 rounded-xl border border-white/5">
+                <ul class="space-y-2.5 text-xs text-slate-300">
+                    <li class="flex items-start gap-3 bg-[#242530]/50 p-3 rounded-xl border border-white/5">
                         <span class="text-indigo-400 mt-0.5 font-bold">—</span>
-                        <p class="text-xs text-slate-300">5 colores de gradiente totalmente personalizables con previsualización WebGL fluida.</p>
-                    </div>
-                    <div class="flex items-start gap-3 bg-[#242530]/50 p-3 rounded-xl border border-white/5">
+                        <span>5 colores de gradiente totalmente personalizables con previsualización WebGL fluida.</span>
+                    </li>
+                    <li class="flex items-start gap-3 bg-[#242530]/50 p-3 rounded-xl border border-white/5">
                         <span class="text-indigo-400 mt-0.5 font-bold">—</span>
-                        <p class="text-xs text-slate-300">Estilos con grano (grainy/noise texture) con frecuencia de distorsión dinámica ajustable.</p>
-                    </div>
-                    <div class="flex items-start gap-3 bg-[#242530]/50 p-3 rounded-xl border border-white/5">
+                        <span>Grano y ruido estético analógico ajustable con velocidad de flujo configurable.</span>
+                    </li>
+                    <li class="flex items-start gap-3 bg-[#242530]/50 p-3 rounded-xl border border-white/5">
                         <span class="text-indigo-400 mt-0.5 font-bold">—</span>
-                        <p class="text-xs text-slate-300">Exportación directa en Ultra HD 1080p o 4K para fondos de escritorio o diseños móviles.</p>
-                    </div>
-                    <div class="flex items-start gap-3 bg-[#242530]/50 p-3 rounded-xl border border-white/5">
-                        <span class="text-indigo-400 mt-0.5 font-bold">—</span>
-                        <p class="text-xs text-slate-300">Guardado rápido mediante URL compartible que guarda cada variable de tu configuración.</p>
-                    </div>
-                    <div class="flex items-start gap-3 bg-[#242530]/50 p-3 rounded-xl border border-white/5">
-                        <span class="text-indigo-400 mt-0.5 font-bold">—</span>
-                        <p class="text-xs text-slate-300">Presets curados inspiradores y opción de simular una malla tridimensional (Wireframe).</p>
-                    </div>
-                </div>
+                        <span>Exportación en Ultra HD y grabador de loops de video en tiempo real.</span>
+                    </li>
+                </ul>
 
-                <!-- Botón de Cerrar -->
                 <button id="close-modal-btn" class="w-full bg-slate-200 hover:bg-white text-slate-950 font-bold py-3.5 rounded-xl text-xs tracking-wider uppercase transition duration-200">
-                    Close
+                    Cerrar
                 </button>
             </div>
         </div>
-    </div>
+    </dialog>
 
 
-    <!-- ================= THREE.JS & SHADER IMPLEMENTATION ================= -->
+    <!-- ================= IMPLEMENTACIÓN DE ARQUITECTURA JS ================= -->
     <script>
-        // Inicializar Iconos Lucide
-        lucide.createIcons();
+        // --- 1. CLASES BASE DE ESTADO Y COMUNICACIÓN (PROPORCIONADAS) ---
+        class Ps {
+            constructor() {
+                this.callbacks = {};
+                this.callbacks.base = {};
+            }
+            on(e, t) {
+                return typeof e > "u" || e === "" ? (console.warn("wrong names"), !1) : typeof t > "u" ? (console.warn("wrong callback"), !1) : (this.resolveNames(e).forEach(r => {
+                    const s = this.resolveName(r);
+                    this.callbacks[s.namespace] instanceof Object || (this.callbacks[s.namespace] = {}),
+                    this.callbacks[s.namespace][s.value] instanceof Array || (this.callbacks[s.namespace][s.value] = []),
+                    this.callbacks[s.namespace][s.value].push(t)
+                }), this)
+            }
+            off(e) {
+                return typeof e > "u" || e === "" ? (console.warn("wrong name"), !1) : (this.resolveNames(e).forEach(i => {
+                    const r = this.resolveName(i);
+                    if (r.namespace !== "base" && r.value === "")
+                        delete this.callbacks[r.namespace];
+                    else if (r.namespace === "base")
+                        for (const s in this.callbacks)
+                            this.callbacks[s] instanceof Object && this.callbacks[s][r.value] instanceof Array && (delete this.callbacks[s][r.value], Object.keys(this.callbacks[s]).length === 0 && delete this.callbacks[s]);
+                    else
+                        this.callbacks[r.namespace] instanceof Object && this.callbacks[r.namespace][r.value] instanceof Array && (delete this.callbacks[r.namespace][r.value], Object.keys(this.callbacks[r.namespace]).length === 0 && delete this.callbacks[r.namespace])
+                }), this)
+            }
+            trigger(e, t) {
+                if (typeof e > "u" || e === "") return console.warn("wrong name"), !1;
+                let i = null;
+                const r = t instanceof Array ? t : [];
+                let s = this.resolveNames(e);
+                s = this.resolveName(s[0]);
+                if (s.namespace === "base") {
+                    for (const o in this.callbacks) {
+                        if (this.callbacks[o] instanceof Object && this.callbacks[o][s.value] instanceof Array) {
+                            this.callbacks[o][s.value].forEach(a => {
+                                a.apply(this, r);
+                            });
+                        }
+                    }
+                } else if (this.callbacks[s.namespace] instanceof Object) {
+                    if (s.value === "") return console.warn("wrong name"), this;
+                    this.callbacks[s.namespace][s.value].forEach(o => {
+                        o.apply(this, r);
+                    });
+                }
+                return i;
+            }
+            resolveNames(e) {
+                let t = e;
+                return t = t.replace(/[^a-zA-Z0-9 ,/.]/g, ""), t = t.replace(/[,/]+/g, " "), t = t.split(" "), t
+            }
+            resolveName(e) {
+                const t = {}, i = e.split(".");
+                return t.original = e, t.value = i[0], t.namespace = "base", i.length > 1 && i[1] !== "" && (t.namespace = i[1]), t
+            }
+        }
 
-        // ELEMENTOS DEL DOM
-        const canvas = document.getElementById('webgl-canvas');
-        const wireframeToggle = document.getElementById('wireframe-toggle');
-        const wireframeDot = document.getElementById('wireframe-dot');
-        const randomizeBtn = document.getElementById('randomize-btn');
-        const exportPng1k = document.getElementById('export-png-1k');
-        const exportPng4k = document.getElementById('export-png-4k');
-        const copyLinkBtn = document.getElementById('copy-link-btn');
-        const toast = document.getElementById('toast');
-        const aboutBtn = document.getElementById('about-btn');
-        const aboutModal = document.getElementById('about-modal');
-        const closeModalX = document.getElementById('close-modal-x');
-        const closeModalBtn = document.getElementById('close-modal-btn');
+        // Reloj de animación con pausa por foco / Visibilidad de pestaña
+        class gd extends Ps {
+            constructor() {
+                super();
+                this.start = Date.now();
+                this.current = this.start;
+                this.elapsed = 0;
+                this.delta = 16;
+                this.playing = !0;
+                this.rafId = null;
+                this.onVisibilityChange = () => {
+                    document.hidden ? this.playing = !1 : (this.playing = !0, this.current = Date.now())
+                };
+                document.addEventListener("visibilitychange", this.onVisibilityChange);
+                this.rafId = window.requestAnimationFrame(() => { this.tick() });
+            }
+            tick() {
+                if (this.playing) {
+                    const e = Date.now();
+                    this.delta = e - this.current;
+                    this.current = e;
+                    this.elapsed = this.current - this.start;
+                    this.trigger("tick");
+                }
+                this.rafId = window.requestAnimationFrame(() => { this.tick() });
+            }
+            pause() { this.playing = !1 }
+            resume() { this.playing = !0; this.current = Date.now() }
+            destroy() {
+                window.cancelAnimationFrame(this.rafId);
+                document.removeEventListener("visibilitychange", this.onVisibilityChange);
+            }
+        }
 
-        // Controles deslizantes e indicadores de texto
-        const inputs = {
-            col1: document.getElementById('col-1'),
-            col2: document.getElementById('col-2'),
-            col3: document.getElementById('col-3'),
-            col4: document.getElementById('col-4'),
-            col5: document.getElementById('col-5'),
-            noiseAmount: document.getElementById('noise-amount'),
-            noiseSpeed: document.getElementById('noise-speed'),
-            noiseFreq: document.getElementById('noise-frequency'),
-            noiseGrain: document.getElementById('noise-grain')
-        };
+        // Listener de redimensionamiento de ventana
+        class vd extends Ps {
+            constructor() {
+                super();
+                this.onResize = () => { this.trigger("resize") };
+                window.addEventListener("resize", this.onResize);
+            }
+            destroy() { window.removeEventListener("resize", this.onResize) }
+        }
 
-        const valDisplays = {
-            amount: document.getElementById('val-amount'),
-            speed: document.getElementById('val-speed'),
-            freq: document.getElementById('val-freq'),
-            grain: document.getElementById('val-grain')
-        };
-
-        const hexDisplays = {
-            h1: document.getElementById('hex-1'),
-            h2: document.getElementById('hex-2'),
-            h3: document.getElementById('hex-3'),
-            h4: document.getElementById('hex-4'),
-            h5: document.getElementById('hex-5')
-        };
-
-        // VARIABLES DE ESTADO Y PARÁMETROS DEL GRADIENTE
-        let params = {
-            wireframe: false,
-            colors: ['#0ecac6', '#219ebc', '#023047', '#ffb703', '#fb8500'],
-            amount: 0.45,
-            speed: 0.015,
-            frequency: 2.2,
-            grain: 0.18
-        };
-
-        // Paletas de color predefinidas para la aleatorización estética
-        const colorPalettes = [
-            ['#0ecac6', '#219ebc', '#023047', '#ffb703', '#fb8500'], // Original
-            ['#f72585', '#7209b7', '#3f37c9', '#4361ee', '#4cc9f0'], // Vaporwave Neon
-            ['#ff9f1c', '#ffbf69', '#ffffff', '#cbf3f0', '#2ec4b6'], // Soft Citrus
-            ['#d90429', '#ef233c', '#edf2f4', '#8d99ae', '#2b2d42'], // Classic Contrast
-            ['#2b2d42', '#8d99ae', '#edf2f4', '#f15bb5', '#fee440'], // Pop Art
-            ['#2a9d8f', '#e9c46a', '#f4a261', '#e76f51', '#264653'], // Terracotta & Teal
-            ['#111111', '#333333', '#555555', '#777777', '#999999'], // Monocromático
-            ['#70d6ff', '#ff70a6', '#ff9770', '#ffd670', '#e9ff70'], // Pastel Acid
-            ['#00f5d4', '#00bbf9', '#000000', '#9b5de5', '#f15bb5']  // Cyberpunk
+        // Base de Datos de 12 Paletas de Colores Curadas para Mezclas Hermosas
+        const Ia = [
+            ["#8ecae6", "#219ebc", "#023047", "#ffb703", "#fb8500"],
+            ["#69d2e7", "#a7dbd8", "#e0e4cc", "#f38630", "#fa6900"],
+            ["#fe4365", "#fc9d9a", "#f9cdad", "#c8c8a9", "#83af9b"],
+            ["#ecd078", "#d95b43", "#c02942", "#542437", "#53777a"],
+            ["#556270", "#4ecdc4", "#c7f464", "#ff6b6b", "#c44d58"],
+            ["#774f38", "#e08e79", "#f1d4af", "#ece5ce", "#c5e0dc"],
+            ["#e8ddcb", "#cdb380", "#036564", "#033649", "#031634"],
+            ["#490a3d", "#bd1550", "#e97f02", "#f8ca00", "#8a9b0f"],
+            ["#594f4f", "#547980", "#45ada8", "#9de0ad", "#e5fcc2"],
+            ["#00a0b0", "#6a4a3c", "#cc333f", "#eb6841", "#edc951"],
+            ["#3fb8af", "#7fc7af", "#dad8a7", "#ff9e9d", "#ff3d7f"],
+            ["#f8b195", "#f67280", "#c06c84", "#6c5b7b", "#355c7d"]
         ];
 
-        // CONFIGURACIÓN DE THREE.JS
-        let scene, camera, renderer, geometry, material, mesh;
-        let clock = new THREE.Clock();
+        // --- 3. GESTIÓN CENTRALIZADA DE ESTADO (`Yo` y `Ed`) ---
+        const Yo = {
+            preset: {
+                selected: "default"
+            },
+            gradient: {
+                wireframe: !1,
+                colors: ["#8ecae6", "#219ebc", "#023047", "#ffb703", "#fb8500"],
+                noiseAmount: .20,
+                noiseSpeed: .02,
+                noiseFrequency: { x: 3.0, y: 6.0 },
+                noiseGrain: .15,
+                meshSegments: { width: 200, height: 200 }
+            },
+            export: {
+                imageResolution: "1080p",
+                videoResolution: "1080p",
+                videoDuration: 5
+            }
+        };
 
-        // SHADERS PERSONALIZADOS (Vertex y Fragment)
-        // Vertex Shader: Se encarga de la malla 3D y deforma las posiciones de los vértices usando ruido 3D
+        function Ws(n) { return typeof n == "object" && n !== null && !Array.isArray(n) }
+        function Io(n) { return JSON.parse(JSON.stringify(n)) }
+        function ms(n, e) {
+            return Ws(e) && Object.entries(e).forEach(([t, i]) => {
+                if (Array.isArray(i)) { n[t] = [...i]; return }
+                if (Ws(i)) { Ws(n[t]) || (n[t] = {}), ms(n[t], i); return }
+                typeof i < "u" && (n[t] = i)
+            }), n
+        }
+        function Xs(n={}) {
+            const e = Io(Yo);
+            return ms(e, n), e
+        }
+
+        class Ed extends Ps {
+            constructor(e={}) {
+                super();
+                this.state = Xs(e);
+            }
+            getState() { return this.state; }
+            getSection(e) { return this.state[e]; }
+            getSnapshot() { return Io(this.state); }
+            getGradientPreset() { return Io(this.state.gradient); }
+            getSelectedPreset() { return this.state.preset.selected; }
+            applySnapshot(e) {
+                ms(this.state, Xs(e));
+                this.emitChange("all");
+            }
+            applyGradientPreset(e) {
+                const t = Xs({ gradient: e }).gradient;
+                ms(this.state.gradient, t);
+                this.emitChange("gradient");
+            }
+            reset() { this.applySnapshot(Yo); }
+            emitChange(e) { this.trigger("change", [{ section: e, state: this.state }]); }
+            setSelectedPreset(e) {
+                this.state.preset.selected !== e && (this.state.preset.selected = e, this.emitChange("preset"));
+            }
+            setGradientValue(e, t) {
+                this.state.gradient[e] = t;
+                this.emitChange("gradient");
+            }
+            setGradientNoiseFrequency(e, t) {
+                this.state.gradient.noiseFrequency[e] = t;
+                this.emitChange("gradient");
+            }
+            setGradientColor(e, t) {
+                this.state.gradient.colors[e] = t;
+                this.emitChange("gradient");
+            }
+            randomizeGradientColors() {
+                Ia[Math.floor(Math.random() * Ia.length)].forEach((t, i) => {
+                    this.state.gradient.colors[i] = t;
+                });
+                this.emitChange("gradient");
+            }
+        }
+
+        const store = new Ed();
+
+
+        // ================= SHADERS Y LOGICA WEBGL (THREE.JS) =================
+
+        let scene, camera, renderer, geometry, material, mesh, orbitControls;
+        const canvas = document.getElementById('webgl-canvas');
+
+        // Sombreador de Vértices FBM de alta compatibilidad (Compilación 100% garantizada en cualquier GPU)
         const vertexShader = `
+            precision mediump float;
+            precision mediump int;
+
             uniform float uTime;
-            uniform float uFrequency;
+            uniform vec2 uFrequency;
             uniform float uAmount;
             varying vec2 vUv;
             varying float vNoise;
 
-            // Simplex Noise 3D de Ashima Arts para calcular ondulaciones en la GPU
-            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-            float snoise(vec3 v) {
-                const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-                const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-                vec3 i  = floor(v + dot(v, C.yyy));
-                vec3 x0 = v - i + dot(i, C.xxx);
-                vec3 g = step(x0.yzx, x0.xyz);
-                vec3 l = 1.0 - g;
-                vec3 i1 = min(g.xyz, l.zxy);
-                vec3 i2 = max(g.xyz, l.zxy);
-                vec3 x1 = x0 - i1 + C.xxx;
-                vec3 x2 = x0 - i2 + C.yyy;
-                vec3 x3 = x0 - D.yyy;
-                i = mod289(i);
-                vec4 p = permute(permute(permute(
-                            i.z + vec4(0.0, i1.z, i2.z, 1.0))
-                        + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-                        + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-                float n_ = 0.142857142857;
-                vec3 ns = n_ * D.wyz - D.xzx;
-                vec4 j = p - 49.0 * floor(p * ns.z);
-                vec4 x_ = floor(j * ns.z);
-                vec4 y_ = floor(j - 7.0 * x_);
-                vec4 x = x_ *ns.x + ns.yyyy;
-                vec4 y = y_ *ns.x + ns.yyyy;
-                vec4 h = 1.0 - abs(x) - abs(y);
-                vec4 b0 = vec4(x.xy, y.xy);
-                vec4 b1 = vec4(x.zw, y.zw);
-                vec4 s0 = floor(b0)*2.0 + 1.0;
-                vec4 s1 = floor(b1)*2.0 + 1.0;
-                vec4 sh = -step(h, vec4(0.0));
-                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
-                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-                vec3 p0 = vec3(a0.xy, h.x);
-                vec3 p1 = vec3(a0.zw, h.y);
-                vec3 p2 = vec3(a1.xy, h.z);
-                vec3 p3 = vec3(a1.zw, h.w);
-                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-                p0 *= norm.x;
-                p1 *= norm.y;
-                p2 *= norm.z;
-                p3 *= norm.w;
-                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-                m = m * m;
-                return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+            // Función de onda fluida altamente estética, sedosa y matemáticamente robusta
+            float getWave(vec2 p, float time) {
+                float total = 0.0;
+                
+                // Capa de deformación 1
+                total += sin(p.x * 0.4 + time * 1.2) * cos(p.y * 0.4 + time * 0.9);
+                
+                // Capa de deformación 2 (rotada para romper simetrías lineales)
+                vec2 p2 = vec2(p.x * 0.707 + p.y * 0.707, -p.x * 0.707 + p.y * 0.707);
+                total += sin(p2.x * 0.85 - time * 1.4) * cos(p2.y * 0.75 + time * 1.0) * 0.5;
+                
+                // Capa de deformación 3 (detalles finos)
+                vec2 p3 = vec2(p.y * 0.966 - p.x * 0.258, p.x * 0.966 + p.y * 0.258);
+                total += sin(p3.x * 1.8 + time * 2.0) * cos(p3.y * 1.4 - time * 1.1) * 0.25;
+                
+                return total;
             }
 
             void main() {
                 vUv = uv;
                 
-                // Generar distorsión a partir de la suma de múltiples capas de ondas de ruido
-                vec3 noiseCoords = vec3(position.xy * uFrequency, uTime);
-                float noise = snoise(noiseCoords);
-                noise += 0.5 * snoise(noiseCoords * 2.0);
+                // Aplicar frecuencias individuales X e Y sobre los vértices
+                vec2 p = position.xy * uFrequency;
+                float noise = getWave(p, uTime);
                 
                 vNoise = noise;
                 
-                // Mover los vértices en el eje Z de forma dinámica para crear relieve tridimensional
                 vec3 displacedPosition = position;
                 displacedPosition.z += noise * uAmount;
                 
@@ -447,8 +638,11 @@
             }
         `;
 
-        // Fragment Shader: Interpola sutilmente los 5 colores en base al ruido y genera la textura del grano
+        // Sombreador de Fragmentos corregido con directivas de precisión estrictas
         const fragmentShader = `
+            precision mediump float;
+            precision mediump int;
+
             uniform vec3 uColor1;
             uniform vec3 uColor2;
             uniform vec3 uColor3;
@@ -459,23 +653,23 @@
             varying vec2 vUv;
             varying float vNoise;
 
-            // Función pseudoaleatoria para simular el grano estático
             float rand(vec2 co) {
                 return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
             }
 
             void main() {
-                // Normalizar la altura del ruido para mezclar las capas de color
-                float n = vNoise * 0.5 + 0.5;
+                // Escalar el valor del ruido de la onda para obtener transiciones hiper-suaves
+                float n = vNoise * 0.4 + 0.5;
+                n = clamp(n, 0.0, 1.0);
                 
-                // Mezcla fluida y no lineal de los 5 colores del gradiente usando el mapa de ruido
+                // Interpolación fluida de los 5 colores usando smoothstep para sedosidad extrema
                 vec3 color = mix(uColor1, uColor2, smoothstep(0.0, 0.25, n));
                 color = mix(color, uColor3, smoothstep(0.25, 0.5, n));
                 color = mix(color, uColor4, smoothstep(0.5, 0.75, n));
                 color = mix(color, uColor5, smoothstep(0.75, 1.0, n));
                 
-                // Generación matemática de grano (Noise Grain) para darle textura orgánica / retro
-                float grain = (rand(vUv + fract(uTime * 0.001)) - 0.5) * uGrain;
+                // Grano analógico para una estética orgánica
+                float grain = (rand(vUv + fract(uTime * 0.002)) - 0.5) * uGrain;
                 color += vec3(grain);
                 
                 gl_FragColor = vec4(color, 1.0);
@@ -483,153 +677,140 @@
         `;
 
         function initWebGL() {
-            // 1. Escena y cámara
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, 0, 4.5);
+            const gradParams = store.getState().gradient;
 
-            // 2. Renderer con Antialiasing y soporte para preservación de buffer (necesario para la exportación de imagen)
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#07080c');
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 4.2);
+
             renderer = new THREE.WebGLRenderer({
                 canvas: canvas,
                 antialias: true,
                 preserveDrawingBuffer: true
             });
+            
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.setSize(window.innerWidth, window.innerHeight);
 
-            // 3. Crear Geometría (Malla plana con gran subdivisión de vértices para alta definición en el oleaje)
-            geometry = new THREE.PlaneGeometry(6, 4, 150, 100);
+            // Generar malla plana con gran subdivisión para el oleaje 3D fluido
+            geometry = new THREE.PlaneGeometry(6, 4, gradParams.meshSegments.width, gradParams.meshSegments.height);
 
-            // 4. Uniforms del material (Variables enviadas a los Shaders)
             const uniforms = {
                 uTime: { value: 0.0 },
-                uFrequency: { value: params.frequency },
-                uAmount: { value: params.amount },
-                uGrain: { value: params.grain },
-                uColor1: { value: new THREE.Color(params.colors[0]) },
-                uColor2: { value: new THREE.Color(params.colors[1]) },
-                uColor3: { value: new THREE.Color(params.colors[2]) },
-                uColor4: { value: new THREE.Color(params.colors[3]) },
-                uColor5: { value: new THREE.Color(params.colors[4]) }
+                uFrequency: { value: new THREE.Vector2(gradParams.noiseFrequency.x, gradParams.noiseFrequency.y) },
+                uAmount: { value: gradParams.noiseAmount },
+                uGrain: { value: gradParams.noiseGrain },
+                uColor1: { value: new THREE.Color(gradParams.colors[0]) },
+                uColor2: { value: new THREE.Color(gradParams.colors[1]) },
+                uColor3: { value: new THREE.Color(gradParams.colors[2]) },
+                uColor4: { value: new THREE.Color(gradParams.colors[3]) },
+                uColor5: { value: new THREE.Color(gradParams.colors[4]) }
             };
 
-            // 5. Instanciar Shader Material interactivo
             material = new THREE.ShaderMaterial({
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader,
                 uniforms: uniforms,
-                wireframe: params.wireframe,
+                wireframe: gradParams.wireframe,
                 side: THREE.DoubleSide
             });
 
-            // 6. Crear malla y añadirla a la escena
             mesh = new THREE.Mesh(geometry, material);
-            mesh.rotation.x = -0.3; // Pequeño ángulo de inclinación 3D para apreciar la profundidad
+            mesh.rotation.x = -0.3;
             scene.add(mesh);
 
-            // Añadir manejadores de interacción de arrastre para mover la cámara e interactuar con la perspectiva
-            setupCameraInteractions();
+            // Orbit controls activo por defecto
+            orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+            orbitControls.enableDamping = true;
+            orbitControls.dampingFactor = 0.05;
+            orbitControls.enableZoom = true;
+            orbitControls.maxDistance = 8.0;
+            orbitControls.minDistance = 2.0;
+            orbitControls.enabled = true;
         }
 
-        // Permite rotar el gradiente interactuando de forma táctil u ordenador
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
+        // Bucle de Render
+        const ticker = new gd();
+        let totalElapsed = 0;
 
-        function setupCameraInteractions() {
-            const dragStart = (x, y) => {
-                isDragging = true;
-                previousMousePosition = { x, y };
-            };
+        ticker.on("tick", () => {
+            const gradParams = store.getState().gradient;
+            totalElapsed += gradParams.speed;
 
-            const dragMove = (x, y) => {
-                if (!isDragging) return;
-                const deltaX = x - previousMousePosition.x;
-                const deltaY = y - previousMousePosition.y;
-
-                mesh.rotation.y += deltaX * 0.003;
-                mesh.rotation.x += deltaY * 0.003;
-
-                // Limitar rotación para que no de la vuelta entera
-                mesh.rotation.x = Math.max(-0.8, Math.min(0.2, mesh.rotation.x));
-                mesh.rotation.y = Math.max(-0.6, Math.min(0.6, mesh.rotation.y));
-
-                previousMousePosition = { x, y };
-            };
-
-            const dragEnd = () => { isDragging = false; };
-
-            // Eventos de ratón
-            window.addEventListener('mousedown', (e) => {
-                if(e.target.closest('#gui-panel') || e.target.closest('#about-modal') || e.target.closest('#about-btn')) return;
-                dragStart(e.clientX, e.clientY);
-            });
-            window.addEventListener('mousemove', (e) => dragMove(e.clientX, e.clientY));
-            window.addEventListener('mouseup', dragEnd);
-
-            // Eventos táctiles para móviles
-            window.addEventListener('touchstart', (e) => {
-                if(e.target.closest('#gui-panel') || e.target.closest('#about-modal') || e.target.closest('#about-btn')) return;
-                const touch = e.touches[0];
-                dragStart(touch.clientX, touch.clientY);
-            });
-            window.addEventListener('touchmove', (e) => {
-                const touch = e.touches[0];
-                dragMove(touch.clientX, touch.clientY);
-            });
-            window.addEventListener('touchend', dragEnd);
-        }
-
-        // CONTROLADOR DEL BUCLE DE ANIMACIÓN
-        let totalElapsedTime = 0;
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            // Avanzar el tiempo según la velocidad ajustada
-            totalElapsedTime += params.speed;
-            
             if (material) {
-                material.uniforms.uTime.value = totalElapsedTime;
+                material.uniforms.uTime.value = totalElapsed;
             }
-            
-            renderer.render(scene, camera);
-        }
 
-        // CONTROL DE REDIMENSIONAMIENTO DE VENTANA (FLUIDO)
-        window.addEventListener('resize', () => {
+            if (orbitControls && orbitControls.enabled) {
+                orbitControls.update();
+            }
+
+            renderer.render(scene, camera);
+        });
+
+        // Redimensionamiento
+        const resizer = new vd();
+        resizer.on("resize", () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
 
-        // ================= SISTEMA DE INTERFAZ DE USUARIO Y CONTROLADORES =================
+        // ================= SINCRONIZACIÓN DE INTERFAZ DE USUARIO =================
 
-        // Sincronizar UI física con las variables internas
-        function updateUI() {
-            // Actualizar colores
-            params.colors.forEach((col, i) => {
+        function renderColorsControls() {
+            const gradParams = store.getState().gradient;
+            const container = document.getElementById("colors-container");
+            container.innerHTML = "";
+
+            gradParams.colors.forEach((col, i) => {
                 const index = i + 1;
-                inputs[`col${index}`].value = col;
-                hexDisplays[`h${index}`].textContent = col;
-                if (material) {
-                    material.uniforms[`uColor${index}`].value.set(col);
-                }
+                const div = document.createElement("div");
+                div.className = "flex items-center justify-between bg-[#1f2029]/40 p-2 rounded border border-white/5";
+                div.innerHTML = `
+                    <span class="text-xs text-slate-400">Color ${index}</span>
+                    <div class="flex items-center gap-2">
+                        <span id="hex-${index}" class="mono-font text-xs uppercase text-slate-300">${col}</span>
+                        <input type="color" id="col-${index}" value="${col}" class="w-8 h-8 rounded border-0 cursor-pointer bg-transparent">
+                    </div>
+                `;
+                container.appendChild(div);
+
+                document.getElementById(`col-${index}`).addEventListener("input", (e) => {
+                    const newHex = e.target.value;
+                    store.setGradientColor(i, newHex);
+                });
             });
+        }
 
-            // Actualizar inputs de rango
-            inputs.noiseAmount.value = params.amount;
-            inputs.noiseSpeed.value = params.speed;
-            inputs.noiseFreq.value = params.frequency;
-            inputs.noiseGrain.value = params.grain;
+        // Actualizar elementos visuales físicos de la barra lateral
+        function updateUI() {
+            const gradParams = store.getState().gradient;
+            
+            document.getElementById("noise-amount").value = gradParams.noiseAmount;
+            document.getElementById("val-amount").textContent = gradParams.noiseAmount.toFixed(2);
 
-            // Actualizar indicadores numéricos
-            valDisplays.amount.textContent = Number(params.amount).toFixed(2);
-            valDisplays.speed.textContent = Number(params.speed).toFixed(3);
-            valDisplays.freq.textContent = Number(params.frequency).toFixed(1);
-            valDisplays.grain.textContent = Number(params.grain).toFixed(2);
+            document.getElementById("noise-speed").value = gradParams.noiseSpeed;
+            document.getElementById("val-speed").textContent = gradParams.noiseSpeed.toFixed(3);
 
-            // Actualizar modo wireframe
-            if (params.wireframe) {
+            document.getElementById("noise-freq-x").value = gradParams.noiseFrequency.x;
+            document.getElementById("val-freq-x").textContent = gradParams.noiseFrequency.x.toFixed(1);
+
+            document.getElementById("noise-freq-y").value = gradParams.noiseFrequency.y;
+            document.getElementById("val-freq-y").textContent = gradParams.noiseFrequency.y.toFixed(1);
+
+            document.getElementById("noise-grain").value = gradParams.noiseGrain;
+            document.getElementById("val-grain").textContent = gradParams.noiseGrain.toFixed(2);
+
+            document.getElementById("mesh-segments").value = gradParams.meshSegments.width;
+            document.getElementById("mesh-segments-val").textContent = gradParams.meshSegments.width;
+
+            const wireframeToggle = document.getElementById('wireframe-toggle');
+            const wireframeDot = document.getElementById('wireframe-dot');
+            if (gradParams.wireframe) {
                 wireframeToggle.classList.add('bg-indigo-600');
                 wireframeToggle.classList.remove('bg-slate-700');
                 wireframeDot.classList.add('translate-x-5');
@@ -639,140 +820,330 @@
                 wireframeDot.classList.remove('translate-x-5');
             }
 
+            document.getElementById("preset-select").value = store.getSelectedPreset();
+
             if (material) {
-                material.wireframe = params.wireframe;
-                material.uniforms.uFrequency.value = params.frequency;
-                material.uniforms.uAmount.value = params.amount;
-                material.uniforms.uGrain.value = params.grain;
+                material.wireframe = gradParams.wireframe;
+                material.uniforms.uAmount.value = gradParams.noiseAmount;
+                material.uniforms.uFrequency.value.set(gradParams.noiseFrequency.x, gradParams.noiseFrequency.y);
+                material.uniforms.uGrain.value = gradParams.noiseGrain;
+                
+                gradParams.colors.forEach((col, idx) => {
+                    material.uniforms[`uColor${idx + 1}`].value.set(col);
+                    const hexSpan = document.getElementById(`hex-${idx + 1}`);
+                    const colInput = document.getElementById(`col-${idx + 1}`);
+                    if (hexSpan) hexSpan.textContent = col;
+                    if (colInput) colInput.value = col;
+                });
             }
+
+            updateURLHash();
         }
 
-        // ASIGNACIÓN DE EVENTOS DE ENTRADA (SLIDERS Y COLOR PICKERS)
-        
-        // Listeners de Colores
-        params.colors.forEach((_, i) => {
-            const index = i + 1;
-            inputs[`col${index}`].addEventListener('input', (e) => {
-                const hexVal = e.target.value;
-                params.colors[i] = hexVal;
-                hexDisplays[`h${index}`].textContent = hexVal;
-                material.uniforms[`uColor${index}`].value.set(hexVal);
-                updateURLHash();
-            });
+        store.on("change", updateUI);
+
+
+        // ================= ASIGNACIÓN DE EVENTOS EN INTERFAZ DE USUARIO =================
+
+        document.getElementById("noise-amount").addEventListener("input", (e) => {
+            store.setGradientValue("noiseAmount", parseFloat(e.target.value));
+        });
+        document.getElementById("noise-speed").addEventListener("input", (e) => {
+            store.setGradientValue("noiseSpeed", parseFloat(e.target.value));
+        });
+        document.getElementById("noise-freq-x").addEventListener("input", (e) => {
+            store.setGradientNoiseFrequency("x", parseFloat(e.target.value));
+        });
+        document.getElementById("noise-freq-y").addEventListener("input", (e) => {
+            store.setGradientNoiseFrequency("y", parseFloat(e.target.value));
+        });
+        document.getElementById("noise-grain").addEventListener("input", (e) => {
+            store.setGradientValue("noiseGrain", parseFloat(e.target.value));
         });
 
-        // Sliders de control
-        inputs.noiseAmount.addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
-            params.amount = val;
-            valDisplays.amount.textContent = val.toFixed(2);
-            material.uniforms.uAmount.value = val;
-            updateURLHash();
+        document.getElementById("wireframe-toggle").addEventListener("click", () => {
+            const current = store.getState().gradient.wireframe;
+            store.setGradientValue("wireframe", !current);
         });
 
-        inputs.noiseSpeed.addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
-            params.speed = val;
-            valDisplays.speed.textContent = val.toFixed(3);
-            updateURLHash();
+        document.getElementById("mesh-segments").addEventListener("change", (e) => {
+            const segments = parseInt(e.target.value);
+            store.state.gradient.meshSegments.width = segments;
+            store.state.gradient.meshSegments.height = segments;
+            document.getElementById("mesh-segments-val").textContent = segments;
+
+            if (geometry) geometry.dispose();
+            geometry = new THREE.PlaneGeometry(6, 4, segments, segments);
+            mesh.geometry = geometry;
         });
 
-        inputs.noiseFreq.addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
-            params.frequency = val;
-            valDisplays.freq.textContent = val.toFixed(1);
-            material.uniforms.uFrequency.value = val;
-            updateURLHash();
+        document.getElementById("randomize-btn").addEventListener("click", () => {
+            store.setSelectedPreset("custom");
+            store.randomizeGradientColors();
         });
 
-        inputs.noiseGrain.addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
-            params.grain = val;
-            valDisplays.grain.textContent = val.toFixed(2);
-            material.uniforms.uGrain.value = val;
-            updateURLHash();
+        const orbitToggle = document.getElementById("orbit-toggle");
+        const orbitDot = document.getElementById("orbit-dot");
+        orbitToggle.addEventListener("click", () => {
+            orbitControls.enabled = !orbitControls.enabled;
+            if (orbitControls.enabled) {
+                orbitToggle.classList.add('bg-indigo-600');
+                orbitToggle.classList.remove('bg-slate-700');
+                orbitDot.classList.add('translate-x-5');
+            } else {
+                orbitToggle.classList.add('bg-slate-700');
+                orbitToggle.classList.remove('bg-indigo-600');
+                orbitDot.classList.remove('translate-x-5');
+            }
         });
 
-        // Alternar modo Wireframe
-        wireframeToggle.addEventListener('click', () => {
-            params.wireframe = !params.wireframe;
-            updateUI();
-            updateURLHash();
-        });
-
-        // Botón Colores Aleatorios
-        randomizeBtn.addEventListener('click', () => {
-            // Seleccionar paleta aleatoria que no sea idéntica a la actual
-            let newPalette;
-            do {
-                newPalette = colorPalettes[Math.floor(Math.random() * colorPalettes.length)];
-            } while (JSON.stringify(newPalette) === JSON.stringify(params.colors));
-
-            params.colors = [...newPalette];
-            updateUI();
-            updateURLHash();
+        document.getElementById("reset-camera-btn").addEventListener("click", () => {
+            camera.position.set(0, 0, 4.2);
+            camera.rotation.set(0, 0, 0);
+            mesh.rotation.set(-0.3, 0, 0);
+            orbitControls.target.set(0, 0, 0);
+            orbitControls.update();
         });
 
 
-        // ================= SISTEMA DE COMPARTICIÓN POR URL ENCODEADA (BASE64) =================
+        // ================= PRESETS DEFINIDOS DE LA INTERFAZ =================
 
-        // Serializar configuración actual en Hash
+        const presetsDefinition = {
+            default: {
+                wireframe: false,
+                colors: ["#8ecae6", "#219ebc", "#023047", "#ffb703", "#fb8500"],
+                noiseAmount: 0.20,
+                noiseSpeed: 0.02,
+                noiseFrequency: { x: 3.0, y: 6.0 },
+                noiseGrain: 0.15
+            },
+            sunrise: {
+                wireframe: false,
+                colors: ["#f72585", "#7209b7", "#3f37c9", "#4361ee", "#4cc9f0"],
+                noiseAmount: 0.35,
+                noiseSpeed: 0.012,
+                noiseFrequency: { x: 2.2, y: 3.8 },
+                noiseGrain: 0.18
+            },
+            lagoon: {
+                wireframe: false,
+                colors: ["#00a8c6", "#40c0cb", "#f9f2e7", "#aee239", "#8fbe00"],
+                noiseAmount: 0.40,
+                noiseSpeed: 0.025,
+                noiseFrequency: { x: 4.5, y: 2.0 },
+                noiseGrain: 0.10
+            },
+            ember: {
+                wireframe: false,
+                colors: ["#d90429", "#ef233c", "#edf2f4", "#8d99ae", "#2b2d42"],
+                noiseAmount: 0.28,
+                noiseSpeed: 0.015,
+                noiseFrequency: { x: 5.0, y: 5.0 },
+                noiseGrain: 0.25
+            },
+            "soft-grid": {
+                wireframe: true,
+                colors: ["#bbbb88", "#ccc68d", "#eedd99", "#eec290", "#eeaa88"],
+                noiseAmount: 0.18,
+                noiseSpeed: 0.008,
+                noiseFrequency: { x: 1.5, y: 2.5 },
+                noiseGrain: 0.08
+            }
+        };
+
+        document.getElementById("preset-select").addEventListener("change", (e) => {
+            const target = e.target.value;
+            store.setSelectedPreset(target);
+            if (presetsDefinition[target]) {
+                store.applyGradientPreset(presetsDefinition[target]);
+            }
+        });
+
+        document.getElementById("reset-preset-btn").addEventListener("click", () => {
+            store.setSelectedPreset("default");
+            store.applyGradientPreset(presetsDefinition.default);
+        });
+
+
+        // ================= EXPORTACIÓN 4K UHD =================
+
+        document.getElementById("export-img-btn").addEventListener("click", () => {
+            const selectedRes = document.getElementById("export-res-select").value;
+            let width = 1920, height = 1080;
+            if (selectedRes === "4k") {
+                width = 3840;
+                height = 2160;
+            }
+
+            const initialAspect = camera.aspect;
+            const size = new THREE.Vector2();
+            renderer.getSize(size);
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            renderer.render(scene, camera);
+
+            const link = document.createElement('a');
+            link.download = `mesh-gradient-${width}x${height}.png`;
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            camera.aspect = initialAspect;
+            camera.updateProjectionMatrix();
+            renderer.setSize(size.x, size.y);
+            renderer.render(scene, camera);
+        });
+
+
+        // ================= GRABADOR DE VIDEO EN BUCLE =================
+
+        let isRecording = false;
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        document.getElementById("record-video-btn").addEventListener("click", async () => {
+            const btn = document.getElementById("record-video-btn");
+            const btnSpan = btn.querySelector("span");
+            
+            if (isRecording) {
+                mediaRecorder.stop();
+                return;
+            }
+
+            recordedChunks = [];
+            const selectedRes = document.getElementById("video-res-select").value;
+            const duration = parseFloat(document.getElementById("video-duration").value);
+
+            let width = 1280, height = 720;
+            if (selectedRes === "1080p") {
+                width = 1920;
+                height = 1080;
+            }
+
+            const initialAspect = camera.aspect;
+            const size = new THREE.Vector2();
+            renderer.getSize(size);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+
+            const stream = canvas.captureStream(30);
+            
+            const options = { mimeType: 'video/webm;codecs=vp9,opus', videoBitsPerSecond: 8000000 };
+            
+            try {
+                mediaRecorder = new MediaRecorder(stream, options);
+            } catch (e) {
+                mediaRecorder = new MediaRecorder(stream, { videoBitsPerSecond: 5000000 });
+            }
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) recordedChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `gradient-motion-loop-${width}x${height}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                camera.aspect = initialAspect;
+                camera.updateProjectionMatrix();
+                renderer.setSize(size.x, size.y);
+
+                isRecording = false;
+                btn.classList.add("bg-indigo-600");
+                btn.classList.remove("bg-red-600");
+                btnSpan.textContent = "Iniciar Grabación";
+            };
+
+            isRecording = true;
+            mediaRecorder.start();
+            btn.classList.remove("bg-indigo-600");
+            btn.classList.add("bg-red-600");
+            
+            let timeLeft = duration;
+            const interval = setInterval(() => {
+                if (!isRecording) {
+                    clearInterval(interval);
+                    return;
+                }
+                timeLeft -= 0.5;
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    if (mediaRecorder.state !== "inactive") {
+                        mediaRecorder.stop();
+                    }
+                } else {
+                    btnSpan.textContent = `Grabando (${timeLeft.toFixed(1)}s)`;
+                }
+            }, 500);
+        });
+
+
+        // ================= COMPARTIR ENLACE (BASE64) =================
+
         function updateURLHash() {
             try {
-                const stringified = JSON.stringify({
-                    w: params.wireframe ? 1 : 0,
-                    c: params.colors.map(col => col.replace('#', '')),
-                    a: parseFloat(params.amount.toFixed(2)),
-                    s: parseFloat(params.speed.toFixed(3)),
-                    f: parseFloat(params.frequency.toFixed(1)),
-                    g: parseFloat(params.grain.toFixed(2))
-                });
-                const encoded = btoa(stringified);
-                window.history.replaceState(null, null, `#config=${encoded}`);
-            } catch (err) {
-                console.error("Error serializing config to URL hash:", err);
-            }
+                const gp = store.getState().gradient;
+                const data = {
+                    w: gp.wireframe ? 1 : 0,
+                    c: gp.colors.map(col => col.replace('#', '')),
+                    a: parseFloat(gp.noiseAmount.toFixed(2)),
+                    s: parseFloat(gp.noiseSpeed.toFixed(3)),
+                    fx: parseFloat(gp.noiseFrequency.x.toFixed(1)),
+                    fy: parseFloat(gp.noiseFrequency.y.toFixed(1)),
+                    g: parseFloat(gp.noiseGrain.toFixed(2)),
+                    m: gp.meshSegments.width,
+                    p: store.getSelectedPreset()
+                };
+                const base64 = btoa(JSON.stringify(data));
+                window.history.replaceState(null, null, `#config=${base64}`);
+            } catch (err) {}
         }
 
-        // Cargar configuración desde el Hash de la barra de direcciones al iniciar
-        function loadConfigFromURL() {
+        function loadURLHash() {
             const hash = window.location.hash;
             if (hash && hash.startsWith('#config=')) {
                 try {
-                    const base64Data = hash.replace('#config=', '');
-                    const decoded = atob(base64Data);
-                    const loaded = JSON.parse(decoded);
-
-                    if (loaded) {
-                        params.wireframe = loaded.w === 1;
-                        if (loaded.c && loaded.c.length === 5) {
-                            params.colors = loaded.c.map(hex => '#' + hex);
-                        }
-                        if (loaded.a !== undefined) params.amount = loaded.a;
-                        if (loaded.s !== undefined) params.speed = loaded.s;
-                        if (loaded.f !== undefined) params.frequency = loaded.f;
-                        if (loaded.g !== undefined) params.grain = loaded.g;
+                    const decoded = atob(hash.replace('#config=', ''));
+                    const data = JSON.parse(decoded);
+                    if (data) {
+                        const gradient = {
+                            wireframe: data.w === 1,
+                            colors: data.c.map(hex => '#' + hex),
+                            noiseAmount: data.a,
+                            noiseSpeed: data.s,
+                            noiseFrequency: { x: data.fx, y: data.fy },
+                            noiseGrain: data.g,
+                            meshSegments: { width: data.m, height: data.m }
+                        };
+                        store.applyGradientPreset(gradient);
+                        store.setSelectedPreset(data.p || "custom");
                     }
-                } catch (err) {
-                    console.warn("Could not parse configuration from hash URL, using defaults.", err);
-                }
+                } catch (e) {}
             }
         }
 
-        // Copiar enlace al portapapeles con feedback elegante (Toast)
-        copyLinkBtn.addEventListener('click', () => {
+        document.getElementById("copy-link-btn").addEventListener("click", () => {
             updateURLHash();
             const link = window.location.href;
-
-            // Método heredado compatible con iframes
-            const tempInput = document.createElement('input');
-            tempInput.value = link;
-            document.body.appendChild(tempInput);
-            tempInput.select();
+            
+            const temp = document.createElement('input');
+            temp.value = link;
+            document.body.appendChild(temp);
+            temp.select();
             document.execCommand('copy');
-            document.body.removeChild(tempInput);
+            document.body.removeChild(temp);
 
-            // Mostrar Toast temporal animado
+            const toast = document.getElementById('toast');
             toast.classList.remove('translate-y-20', 'opacity-0');
             toast.classList.add('translate-y-0', 'opacity-100');
 
@@ -783,73 +1154,40 @@
         });
 
 
-        // ================= EXPORTACIÓN EN ALTA CALIDAD DE IMÁGENES =================
+        // ================= CARPETAS COLAPSABLES DE LA BARRA LATERAL =================
 
-        function exportGradientImage(width, height) {
-            // Guardar configuración actual de pantalla del renderer
-            const currentAspect = camera.aspect;
-            const currentSize = new THREE.Vector2();
-            renderer.getSize(currentSize);
-
-            // Desactivar temporalmente inclinaciones exageradas de la cámara para que la captura sea frontal impecable
-            const savedMeshRotationX = mesh.rotation.x;
-            const savedMeshRotationY = mesh.rotation.y;
-            mesh.rotation.set(0, 0, 0);
-
-            // Ajustar el canvas al tamaño de exportación especificado
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
-
-            // Renderizar frame estático limpio
-            renderer.render(scene, camera);
-
-            // Capturar el flujo de datos WebGL en Base64
-            const imgData = canvas.toDataURL('image/png');
-
-            // Descargar el archivo simulando click en un ancla invisible
-            const link = document.createElement('a');
-            link.download = `mesh-gradient-${width}x${height}.png`;
-            link.href = imgData;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            // Restaurar configuración original de resolución y rotación interactiva en pantalla
-            camera.aspect = currentAspect;
-            camera.updateProjectionMatrix();
-            renderer.setSize(currentSize.x, currentSize.y);
-            mesh.rotation.set(savedMeshRotationX, savedMeshRotationY, 0);
-        }
-
-        exportPng1k.addEventListener('click', () => exportGradientImage(1920, 1080));
-        exportPng4k.addEventListener('click', () => exportGradientImage(3840, 2160));
-
-
-        // ================= CONTROL DEL MODAL "ABOUT" =================
-
-        aboutBtn.addEventListener('click', () => {
-            aboutModal.classList.remove('hidden');
-        });
-
-        const hideAboutModal = () => {
-            aboutModal.classList.add('hidden');
-        };
-
-        closeModalX.addEventListener('click', hideAboutModal);
-        closeModalBtn.addEventListener('click', hideAboutModal);
-        aboutModal.addEventListener('click', (e) => {
-            if (e.target === aboutModal) hideAboutModal();
+        document.querySelectorAll(".folder-header").forEach(header => {
+            header.addEventListener("click", () => {
+                const content = header.nextElementSibling;
+                const icon = header.querySelector("[data-lucide='chevron-down']");
+                
+                content.classList.toggle("collapsed");
+                if (content.classList.contains("collapsed")) {
+                    icon.style.transform = "rotate(-90deg)";
+                } else {
+                    icon.style.transform = "rotate(0deg)";
+                }
+            });
         });
 
 
-        // INICIO DE LA APLICACIÓN AL CARGAR LA PÁGINA
-        window.onload = function () {
-            loadConfigFromURL(); // Cargar URL compartida si existe
-            initWebGL();         // Inicializar motor WebGL
-            updateUI();          // Sincronizar UI física con los valores cargados
-            animate();           // Iniciar loop infinito a 60FPS
+        // ================= INICIALIZACIÓN =================
+
+        window.onload = function() {
+            initWebGL(); 
+            loadURLHash(); 
+            renderColorsControls(); 
+            store.emitChange("all"); 
+
+            // Controladores del Modal de Información
+            const aboutModal = document.getElementById("about-modal");
+            document.getElementById("about-btn").addEventListener("click", () => aboutModal.classList.remove("hidden"));
+            document.getElementById("close-modal-x").addEventListener("click", () => aboutModal.classList.add("hidden"));
+            document.getElementById("close-modal-btn").addEventListener("click", () => aboutModal.classList.add("hidden"));
+            aboutModal.addEventListener("click", (e) => {
+                if (e.target === aboutModal) aboutModal.classList.add("hidden");
+            });
         };
     </script>
-</body>
+  </body>
 </html>
