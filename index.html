@@ -3,37 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="manifest" href="/site.webmanifest" />
-    
     <title>Generador de Gradientes Animados 3D – WebGL</title>
-    <meta
-      name="description"
-      content="Generador interactivo y gratuito de degradados animados en 3D con WebGL. Crea texturas fluidas y granuladas y exporta imágenes en alta resolución hasta 4K."
-    />
-    <link rel="canonical" href="https://gradients.juangarcia.ch/" />
-
-    <!-- Meta Tags de Facebook / Open Graph -->
-    <meta property="og:url" content="https://gradients.juangarcia.ch/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:locale" content="es_ES" />
-    <meta property="og:site_name" content="Generador de Gradientes Animados 3D" />
-    <meta
-      property="og:title"
-      content="Generador de Gradientes Animados 3D – WebGL"
-    />
-    <meta
-      property="og:description"
-      content="Crea degradados animados con ruido y grano en tiempo real. Exporta imágenes 4K o bucles de video sin registros."
-    />
-    <meta
-      property="og:image"
-      content="https://gradients.juangarcia.ch/preview.jpg"
-    />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    <meta name="description" content="Generador interactivo y gratuito de degradados animados en 3D con WebGL. Crea texturas fluidas y granuladas y exporta imágenes en alta resolución hasta 4K." />
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -41,9 +12,9 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Three.js principal -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Orbit Controls para rotación e interacción 3D de cámara -->
+    <!-- Orbit Controls -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -56,22 +27,11 @@
             margin: 0;
             user-select: none;
         }
-        .mono-font {
-            font-family: 'Space Mono', monospace;
-        }
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: rgba(15, 15, 20, 0.5);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.25);
-        }
+        .mono-font { font-family: 'Space Mono', monospace; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15,15,20,0.5); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
         input[type="range"] {
             -webkit-appearance: none;
             appearance: none;
@@ -108,14 +68,28 @@
             margin-top: 0 !important;
             margin-bottom: 0 !important;
         }
+        /* FIX: about modal overlay */
+        #about-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: rgba(7,8,12,0.85);
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        #about-modal.open {
+            display: flex;
+        }
     </style>
   </head>
   <body class="relative w-screen h-screen">
 
-    <!-- Canvas de renderizado para WebGL -->
     <canvas id="webgl-canvas" class="absolute inset-0 w-full h-full z-0"></canvas>
 
-    <!-- Pie de página / Créditos y Acerca De -->
+    <!-- Footer -->
     <footer class="absolute bottom-6 left-6 z-10 text-white/70 text-xs flex flex-col gap-2 pointer-events-auto mix-blend-difference select-text">
         <div class="flex items-center gap-1">
             <span>Desarrollado con Three.js</span>
@@ -126,17 +100,14 @@
                 <i data-lucide="info" class="w-3.5 h-3.5 inline"></i>
                 <span>Acerca de la herramienta</span>
             </button>
-            <span class="opacity-40">•</span>
-            <a href="https://networkedartifacts.com/airlab" target="_blank" rel="noopener" class="underline hover:text-white transition font-medium">Check Air Lab</a>
         </div>
     </footer>
 
-    <!-- BARRA LATERAL DE CONFIGURACIÓN -->
+    <!-- SIDEBAR -->
     <div id="gui-panel" class="absolute top-6 right-6 z-10 w-96 max-h-[calc(100vh-3rem)] bg-[#15161e]/90 backdrop-blur-xl border border-white/10 rounded-xl text-slate-300 text-sm overflow-y-auto shadow-2xl transition-all duration-300">
-        
-        <!-- Header del panel principal -->
+
         <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
-            <span id="panel-title" class="mono-font font-bold text-xs tracking-wider text-slate-400 uppercase">Configuración de Gradiente</span>
+            <span class="mono-font font-bold text-xs tracking-wider text-slate-400 uppercase">Configuración de Gradiente</span>
             <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
                 <span class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold mono-font">LIVE</span>
@@ -145,7 +116,7 @@
 
         <div class="p-5 space-y-4">
 
-            <!-- FOLDER: PRESETS -->
+            <!-- PRESETS -->
             <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
                 <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
                     <span>Ajustes Preestablecidos</span>
@@ -169,7 +140,7 @@
                 </div>
             </div>
 
-            <!-- FOLDER: MESH -->
+            <!-- MESH -->
             <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
                 <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
                     <span>Estructura de Malla</span>
@@ -182,7 +153,6 @@
                             <span id="wireframe-dot" class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300"></span>
                         </button>
                     </div>
-                    <!-- Resolución de la malla -->
                     <div class="space-y-1">
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">Subdivisiones de Malla</span>
@@ -193,17 +163,14 @@
                 </div>
             </div>
 
-            <!-- FOLDER: COLORS -->
+            <!-- COLORS -->
             <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
                 <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
                     <span>Paleta de Colores</span>
                     <i data-lucide="chevron-down" class="w-4 h-4 transform transition-transform duration-200"></i>
                 </button>
                 <div class="folder-content space-y-2 pt-2">
-                    <!-- Colores individuales -->
-                    <div id="colors-container" class="space-y-2">
-                        <!-- Renderizado dinámicamente mediante JS -->
-                    </div>
+                    <div id="colors-container" class="space-y-2"></div>
                     <button id="randomize-btn" class="w-full mt-2 bg-white text-slate-900 hover:bg-slate-200 py-2 px-4 rounded font-medium text-xs tracking-wider uppercase transition flex items-center justify-center gap-2">
                         <i data-lucide="sparkles" class="w-4 h-4"></i>
                         Aleatorizar Colores
@@ -211,14 +178,13 @@
                 </div>
             </div>
 
-            <!-- FOLDER: NOISE -->
+            <!-- NOISE -->
             <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
                 <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
                     <span>Ruido y Ondas</span>
                     <i data-lucide="chevron-down" class="w-4 h-4 transform transition-transform duration-200"></i>
                 </button>
                 <div class="folder-content space-y-4 pt-2">
-                    <!-- Intensidad -->
                     <div class="space-y-1">
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">Amplitud / Altura</span>
@@ -226,15 +192,13 @@
                         </div>
                         <input type="range" id="noise-amount" min="0.0" max="1.5" step="0.01" value="0.20" class="w-full">
                     </div>
-                    <!-- Velocidad -->
                     <div class="space-y-1">
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">Velocidad de Flujo</span>
-                            <span id="val-speed" class="mono-font text-slate-200">0.02</span>
+                            <span id="val-speed" class="mono-font text-slate-200">0.020</span>
                         </div>
-                        <input type="range" id="noise-speed" min="0.0" max="0.1" step="0.001" value="0.02" class="w-full">
+                        <input type="range" id="noise-speed" min="0.0" max="0.1" step="0.001" value="0.020" class="w-full">
                     </div>
-                    <!-- Frecuencia X -->
                     <div class="space-y-1">
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">Frecuencia Horizontal (X)</span>
@@ -242,7 +206,6 @@
                         </div>
                         <input type="range" id="noise-freq-x" min="0.5" max="10.0" step="0.1" value="3.0" class="w-full">
                     </div>
-                    <!-- Frecuencia Y -->
                     <div class="space-y-1">
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">Frecuencia Vertical (Y)</span>
@@ -250,7 +213,6 @@
                         </div>
                         <input type="range" id="noise-freq-y" min="0.5" max="10.0" step="0.1" value="6.0" class="w-full">
                     </div>
-                    <!-- Rugosidad de Grano -->
                     <div class="space-y-1">
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">Densidad de Grano</span>
@@ -261,7 +223,7 @@
                 </div>
             </div>
 
-            <!-- FOLDER: CAMERA -->
+            <!-- CAMERA -->
             <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
                 <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
                     <span>Perspectiva de Cámara</span>
@@ -280,7 +242,7 @@
                 </div>
             </div>
 
-            <!-- FOLDER: IMAGE EXPORT -->
+            <!-- IMAGE EXPORT -->
             <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
                 <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
                     <span>Exportar Imagen</span>
@@ -300,7 +262,7 @@
                 </div>
             </div>
 
-            <!-- FOLDER: VIDEO EXPORT -->
+            <!-- VIDEO EXPORT -->
             <div class="border border-white/5 rounded-lg bg-[#1a1b23]/40 p-3 space-y-3">
                 <button class="folder-header flex items-center justify-between w-full text-xs text-slate-400 tracking-wider uppercase mono-font font-semibold focus:outline-none">
                     <span>Exportar Video (Bucle)</span>
@@ -329,7 +291,6 @@
 
         </div>
 
-        <!-- Botón para Compartir Enlace -->
         <div class="px-5 pb-5 pt-2">
             <button id="copy-link-btn" class="w-full bg-[#1f2029] hover:bg-[#2a2b38] text-white font-medium py-2.5 rounded-lg text-xs tracking-wider uppercase border border-white/10 transition flex items-center justify-center gap-2">
                 <i data-lucide="link" class="w-4 h-4"></i>
@@ -338,15 +299,15 @@
         </div>
     </div>
 
-    <!-- NOTIFICACIÓN DE COPIADO AL PORTAPAPELES -->
+    <!-- TOAST -->
     <div id="toast" class="absolute bottom-6 right-6 z-30 transform translate-y-20 opacity-0 bg-emerald-500 text-slate-900 font-bold px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 transition-all duration-300 ease-out pointer-events-none">
         <i data-lucide="check-circle" class="w-5 h-5"></i>
         <span>¡Enlace copiado al portapapeles!</span>
     </div>
 
-    <!-- DIÁLOGO INFORMATIVO "ABOUT" -->
-    <dialog id="about-modal" class="fixed inset-0 z-50 bg-[#07080c]/85 backdrop-blur-md hidden flex items-center justify-center p-4 w-full h-full border-0">
-        <div class="w-full max-w-xl bg-[#1b1c24] border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <!-- ABOUT MODAL — FIX: use class-based toggle, not the conflicting hidden+flex combo -->
+    <div id="about-modal">
+        <div class="w-full max-w-xl bg-[#1b1c24] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
             <div class="bg-[#21222b] px-6 py-4 border-b border-white/5 flex items-center justify-between">
                 <span class="mono-font text-xs tracking-widest text-slate-400 uppercase font-bold">Acerca de la herramienta</span>
                 <button id="close-modal-x" class="text-slate-400 hover:text-white transition">
@@ -359,10 +320,9 @@
                         Crea gradientes animados.<br>Exporta imágenes y video. Compártelos.
                     </h2>
                     <p class="text-sm text-slate-400 leading-relaxed">
-                        Un generador interactivo y gratuito de degradados animados en 3D directamente en el navegador. Modifica colores, distorsión, frecuencias de ondas de ruido y dinámicas de movimiento en tiempo real para obtener texturas fluidas y orgánicas sedosas con grano estético, luego exporta a alta resolución.
+                        Un generador interactivo y gratuito de degradados animados en 3D directamente en el navegador. Modifica colores, distorsión, frecuencias de ondas de ruido y dinámicas de movimiento en tiempo real.
                     </p>
                 </div>
-
                 <ul class="space-y-2.5 text-xs text-slate-300">
                     <li class="flex items-start gap-3 bg-[#242530]/50 p-3 rounded-xl border border-white/5">
                         <span class="text-indigo-400 mt-0.5 font-bold">—</span>
@@ -377,210 +337,165 @@
                         <span>Exportación en Ultra HD y grabador de loops de video en tiempo real.</span>
                     </li>
                 </ul>
-
                 <button id="close-modal-btn" class="w-full bg-slate-200 hover:bg-white text-slate-950 font-bold py-3.5 rounded-xl text-xs tracking-wider uppercase transition duration-200">
                     Cerrar
                 </button>
             </div>
         </div>
-    </dialog>
+    </div>
 
 
-    <!-- ================= IMPLEMENTACIÓN DE ARQUITECTURA JS ================= -->
     <script>
-        // --- 1. CLASES BASE DE ESTADO Y COMUNICACIÓN (PROPORCIONADAS) ---
+        // --- EVENT BUS ---
         class Ps {
-            constructor() {
-                this.callbacks = {};
-                this.callbacks.base = {};
-            }
+            constructor() { this.callbacks = { base: {} }; }
             on(e, t) {
-                return typeof e > "u" || e === "" ? (console.warn("wrong names"), !1) : typeof t > "u" ? (console.warn("wrong callback"), !1) : (this.resolveNames(e).forEach(r => {
+                if (!e || !t) return false;
+                this.resolveNames(e).forEach(r => {
                     const s = this.resolveName(r);
-                    this.callbacks[s.namespace] instanceof Object || (this.callbacks[s.namespace] = {}),
-                    this.callbacks[s.namespace][s.value] instanceof Array || (this.callbacks[s.namespace][s.value] = []),
-                    this.callbacks[s.namespace][s.value].push(t)
-                }), this)
+                    if (!(this.callbacks[s.namespace] instanceof Object)) this.callbacks[s.namespace] = {};
+                    if (!(this.callbacks[s.namespace][s.value] instanceof Array)) this.callbacks[s.namespace][s.value] = [];
+                    this.callbacks[s.namespace][s.value].push(t);
+                });
+                return this;
             }
             off(e) {
-                return typeof e > "u" || e === "" ? (console.warn("wrong name"), !1) : (this.resolveNames(e).forEach(i => {
+                if (!e) return false;
+                this.resolveNames(e).forEach(i => {
                     const r = this.resolveName(i);
-                    if (r.namespace !== "base" && r.value === "")
-                        delete this.callbacks[r.namespace];
-                    else if (r.namespace === "base")
+                    if (r.namespace !== "base" && r.value === "") delete this.callbacks[r.namespace];
+                    else if (r.namespace === "base") {
                         for (const s in this.callbacks)
-                            this.callbacks[s] instanceof Object && this.callbacks[s][r.value] instanceof Array && (delete this.callbacks[s][r.value], Object.keys(this.callbacks[s]).length === 0 && delete this.callbacks[s]);
-                    else
-                        this.callbacks[r.namespace] instanceof Object && this.callbacks[r.namespace][r.value] instanceof Array && (delete this.callbacks[r.namespace][r.value], Object.keys(this.callbacks[r.namespace]).length === 0 && delete this.callbacks[r.namespace])
-                }), this)
+                            if (this.callbacks[s] instanceof Object && this.callbacks[s][r.value] instanceof Array)
+                                delete this.callbacks[s][r.value];
+                    } else if (this.callbacks[r.namespace] instanceof Object && this.callbacks[r.namespace][r.value] instanceof Array)
+                        delete this.callbacks[r.namespace][r.value];
+                });
+                return this;
             }
             trigger(e, t) {
-                if (typeof e > "u" || e === "") return console.warn("wrong name"), !1;
-                let i = null;
+                if (!e) return false;
                 const r = t instanceof Array ? t : [];
-                let s = this.resolveNames(e);
-                s = this.resolveName(s[0]);
+                const names = this.resolveNames(e);
+                const s = this.resolveName(names[0]);
                 if (s.namespace === "base") {
-                    for (const o in this.callbacks) {
-                        if (this.callbacks[o] instanceof Object && this.callbacks[o][s.value] instanceof Array) {
-                            this.callbacks[o][s.value].forEach(a => {
-                                a.apply(this, r);
-                            });
-                        }
-                    }
-                } else if (this.callbacks[s.namespace] instanceof Object) {
-                    if (s.value === "") return console.warn("wrong name"), this;
-                    this.callbacks[s.namespace][s.value].forEach(o => {
-                        o.apply(this, r);
-                    });
-                }
-                return i;
+                    for (const o in this.callbacks)
+                        if (this.callbacks[o] instanceof Object && this.callbacks[o][s.value] instanceof Array)
+                            this.callbacks[o][s.value].forEach(a => a.apply(this, r));
+                } else if (this.callbacks[s.namespace] instanceof Object && this.callbacks[s.namespace][s.value] instanceof Array)
+                    this.callbacks[s.namespace][s.value].forEach(o => o.apply(this, r));
+                return this;
             }
-            resolveNames(e) {
-                let t = e;
-                return t = t.replace(/[^a-zA-Z0-9 ,/.]/g, ""), t = t.replace(/[,/]+/g, " "), t = t.split(" "), t
-            }
+            resolveNames(e) { return e.replace(/[^a-zA-Z0-9 ,/.]/g, "").replace(/[,/]+/g, " ").split(" "); }
             resolveName(e) {
                 const t = {}, i = e.split(".");
-                return t.original = e, t.value = i[0], t.namespace = "base", i.length > 1 && i[1] !== "" && (t.namespace = i[1]), t
+                t.original = e; t.value = i[0]; t.namespace = "base";
+                if (i.length > 1 && i[1] !== "") t.namespace = i[1];
+                return t;
             }
         }
 
-        // Reloj de animación con pausa por foco / Visibilidad de pestaña
+        // --- TICKER ---
         class gd extends Ps {
             constructor() {
                 super();
-                this.start = Date.now();
-                this.current = this.start;
-                this.elapsed = 0;
-                this.delta = 16;
-                this.playing = !0;
-                this.rafId = null;
+                this.start = Date.now(); this.current = this.start;
+                this.elapsed = 0; this.delta = 16; this.playing = true; this.rafId = null;
                 this.onVisibilityChange = () => {
-                    document.hidden ? this.playing = !1 : (this.playing = !0, this.current = Date.now())
+                    if (document.hidden) this.playing = false;
+                    else { this.playing = true; this.current = Date.now(); }
                 };
                 document.addEventListener("visibilitychange", this.onVisibilityChange);
-                this.rafId = window.requestAnimationFrame(() => { this.tick() });
+                this.rafId = requestAnimationFrame(() => this.tick());
             }
             tick() {
                 if (this.playing) {
                     const e = Date.now();
-                    this.delta = e - this.current;
-                    this.current = e;
+                    this.delta = e - this.current; this.current = e;
                     this.elapsed = this.current - this.start;
                     this.trigger("tick");
                 }
-                this.rafId = window.requestAnimationFrame(() => { this.tick() });
+                this.rafId = requestAnimationFrame(() => this.tick());
             }
-            pause() { this.playing = !1 }
-            resume() { this.playing = !0; this.current = Date.now() }
-            destroy() {
-                window.cancelAnimationFrame(this.rafId);
-                document.removeEventListener("visibilitychange", this.onVisibilityChange);
-            }
+            pause() { this.playing = false; }
+            resume() { this.playing = true; this.current = Date.now(); }
+            destroy() { cancelAnimationFrame(this.rafId); document.removeEventListener("visibilitychange", this.onVisibilityChange); }
         }
 
-        // Listener de redimensionamiento de ventana
+        // --- RESIZE ---
         class vd extends Ps {
             constructor() {
                 super();
-                this.onResize = () => { this.trigger("resize") };
+                this.onResize = () => this.trigger("resize");
                 window.addEventListener("resize", this.onResize);
             }
-            destroy() { window.removeEventListener("resize", this.onResize) }
+            destroy() { window.removeEventListener("resize", this.onResize); }
         }
 
-        // Base de Datos de 12 Paletas de Colores Curadas para Mezclas Hermosas
+        // --- COLOR PALETTES ---
         const Ia = [
-            ["#8ecae6", "#219ebc", "#023047", "#ffb703", "#fb8500"],
-            ["#69d2e7", "#a7dbd8", "#e0e4cc", "#f38630", "#fa6900"],
-            ["#fe4365", "#fc9d9a", "#f9cdad", "#c8c8a9", "#83af9b"],
-            ["#ecd078", "#d95b43", "#c02942", "#542437", "#53777a"],
-            ["#556270", "#4ecdc4", "#c7f464", "#ff6b6b", "#c44d58"],
-            ["#774f38", "#e08e79", "#f1d4af", "#ece5ce", "#c5e0dc"],
-            ["#e8ddcb", "#cdb380", "#036564", "#033649", "#031634"],
-            ["#490a3d", "#bd1550", "#e97f02", "#f8ca00", "#8a9b0f"],
-            ["#594f4f", "#547980", "#45ada8", "#9de0ad", "#e5fcc2"],
-            ["#00a0b0", "#6a4a3c", "#cc333f", "#eb6841", "#edc951"],
-            ["#3fb8af", "#7fc7af", "#dad8a7", "#ff9e9d", "#ff3d7f"],
-            ["#f8b195", "#f67280", "#c06c84", "#6c5b7b", "#355c7d"]
+            ["#8ecae6","#219ebc","#023047","#ffb703","#fb8500"],
+            ["#69d2e7","#a7dbd8","#e0e4cc","#f38630","#fa6900"],
+            ["#fe4365","#fc9d9a","#f9cdad","#c8c8a9","#83af9b"],
+            ["#ecd078","#d95b43","#c02942","#542437","#53777a"],
+            ["#556270","#4ecdc4","#c7f464","#ff6b6b","#c44d58"],
+            ["#774f38","#e08e79","#f1d4af","#ece5ce","#c5e0dc"],
+            ["#e8ddcb","#cdb380","#036564","#033649","#031634"],
+            ["#490a3d","#bd1550","#e97f02","#f8ca00","#8a9b0f"],
+            ["#594f4f","#547980","#45ada8","#9de0ad","#e5fcc2"],
+            ["#00a0b0","#6a4a3c","#cc333f","#eb6841","#edc951"],
+            ["#3fb8af","#7fc7af","#dad8a7","#ff9e9d","#ff3d7f"],
+            ["#f8b195","#f67280","#c06c84","#6c5b7b","#355c7d"]
         ];
 
-        // --- 3. GESTIÓN CENTRALIZADA DE ESTADO (`Yo` y `Ed`) ---
-        const Yo = {
-            preset: {
-                selected: "default"
-            },
+        // --- DEFAULT STATE ---
+        const DEFAULT_STATE = {
+            preset: { selected: "default" },
             gradient: {
-                wireframe: !1,
-                colors: ["#8ecae6", "#219ebc", "#023047", "#ffb703", "#fb8500"],
-                noiseAmount: .20,
-                noiseSpeed: .02,
+                wireframe: false,
+                colors: ["#8ecae6","#219ebc","#023047","#ffb703","#fb8500"],
+                noiseAmount: 0.20,
+                noiseSpeed: 0.02,   // FIX: was referenced as gradParams.speed (wrong key)
                 noiseFrequency: { x: 3.0, y: 6.0 },
-                noiseGrain: .15,
+                noiseGrain: 0.15,
                 meshSegments: { width: 200, height: 200 }
             },
-            export: {
-                imageResolution: "1080p",
-                videoResolution: "1080p",
-                videoDuration: 5
-            }
+            export: { imageResolution: "1080p", videoResolution: "720p", videoDuration: 5 }
         };
 
-        function Ws(n) { return typeof n == "object" && n !== null && !Array.isArray(n) }
-        function Io(n) { return JSON.parse(JSON.stringify(n)) }
-        function ms(n, e) {
-            return Ws(e) && Object.entries(e).forEach(([t, i]) => {
-                if (Array.isArray(i)) { n[t] = [...i]; return }
-                if (Ws(i)) { Ws(n[t]) || (n[t] = {}), ms(n[t], i); return }
-                typeof i < "u" && (n[t] = i)
-            }), n
-        }
-        function Xs(n={}) {
-            const e = Io(Yo);
-            return ms(e, n), e
+        function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+        function deepMerge(target, source) {
+            if (typeof source !== 'object' || source === null) return target;
+            Object.entries(source).forEach(([k, v]) => {
+                if (Array.isArray(v)) { target[k] = [...v]; }
+                else if (typeof v === 'object' && v !== null) {
+                    if (typeof target[k] !== 'object') target[k] = {};
+                    deepMerge(target[k], v);
+                } else { target[k] = v; }
+            });
+            return target;
         }
 
+        // --- STORE ---
         class Ed extends Ps {
-            constructor(e={}) {
+            constructor() {
                 super();
-                this.state = Xs(e);
+                this.state = deepClone(DEFAULT_STATE);
             }
             getState() { return this.state; }
-            getSection(e) { return this.state[e]; }
-            getSnapshot() { return Io(this.state); }
-            getGradientPreset() { return Io(this.state.gradient); }
+            getSnapshot() { return deepClone(this.state); }
             getSelectedPreset() { return this.state.preset.selected; }
-            applySnapshot(e) {
-                ms(this.state, Xs(e));
-                this.emitChange("all");
-            }
-            applyGradientPreset(e) {
-                const t = Xs({ gradient: e }).gradient;
-                ms(this.state.gradient, t);
-                this.emitChange("gradient");
-            }
-            reset() { this.applySnapshot(Yo); }
-            emitChange(e) { this.trigger("change", [{ section: e, state: this.state }]); }
-            setSelectedPreset(e) {
-                this.state.preset.selected !== e && (this.state.preset.selected = e, this.emitChange("preset"));
-            }
-            setGradientValue(e, t) {
-                this.state.gradient[e] = t;
-                this.emitChange("gradient");
-            }
-            setGradientNoiseFrequency(e, t) {
-                this.state.gradient.noiseFrequency[e] = t;
-                this.emitChange("gradient");
-            }
-            setGradientColor(e, t) {
-                this.state.gradient.colors[e] = t;
-                this.emitChange("gradient");
-            }
+            applySnapshot(s) { deepMerge(this.state, deepClone(s)); this.emitChange("all"); }
+            applyGradientPreset(p) { deepMerge(this.state.gradient, deepClone(p)); this.emitChange("gradient"); }
+            reset() { this.state = deepClone(DEFAULT_STATE); this.emitChange("all"); }
+            emitChange(section) { this.trigger("change", [{ section, state: this.state }]); }
+            setSelectedPreset(v) { this.state.preset.selected = v; this.emitChange("preset"); }
+            setGradientValue(k, v) { this.state.gradient[k] = v; this.emitChange("gradient"); }
+            setGradientNoiseFrequency(axis, v) { this.state.gradient.noiseFrequency[axis] = v; this.emitChange("gradient"); }
+            setGradientColor(idx, hex) { this.state.gradient.colors[idx] = hex; this.emitChange("gradient"); }
             randomizeGradientColors() {
-                Ia[Math.floor(Math.random() * Ia.length)].forEach((t, i) => {
-                    this.state.gradient.colors[i] = t;
-                });
+                const palette = Ia[Math.floor(Math.random() * Ia.length)];
+                palette.forEach((c, i) => this.state.gradient.colors[i] = c);
                 this.emitChange("gradient");
             }
         }
@@ -588,61 +503,39 @@
         const store = new Ed();
 
 
-        // ================= SHADERS Y LOGICA WEBGL (THREE.JS) =================
+        // ====================== SHADERS ======================
 
-        let scene, camera, renderer, geometry, material, mesh, orbitControls;
-        const canvas = document.getElementById('webgl-canvas');
-
-        // Sombreador de Vértices FBM de alta compatibilidad (Compilación 100% garantizada en cualquier GPU)
         const vertexShader = `
             precision mediump float;
-            precision mediump int;
-
             uniform float uTime;
             uniform vec2 uFrequency;
             uniform float uAmount;
             varying vec2 vUv;
             varying float vNoise;
 
-            // Función de onda fluida altamente estética, sedosa y matemáticamente robusta
             float getWave(vec2 p, float time) {
                 float total = 0.0;
-                
-                // Capa de deformación 1
                 total += sin(p.x * 0.4 + time * 1.2) * cos(p.y * 0.4 + time * 0.9);
-                
-                // Capa de deformación 2 (rotada para romper simetrías lineales)
                 vec2 p2 = vec2(p.x * 0.707 + p.y * 0.707, -p.x * 0.707 + p.y * 0.707);
                 total += sin(p2.x * 0.85 - time * 1.4) * cos(p2.y * 0.75 + time * 1.0) * 0.5;
-                
-                // Capa de deformación 3 (detalles finos)
                 vec2 p3 = vec2(p.y * 0.966 - p.x * 0.258, p.x * 0.966 + p.y * 0.258);
                 total += sin(p3.x * 1.8 + time * 2.0) * cos(p3.y * 1.4 - time * 1.1) * 0.25;
-                
                 return total;
             }
 
             void main() {
                 vUv = uv;
-                
-                // Aplicar frecuencias individuales X e Y sobre los vértices
                 vec2 p = position.xy * uFrequency;
                 float noise = getWave(p, uTime);
-                
                 vNoise = noise;
-                
                 vec3 displacedPosition = position;
                 displacedPosition.z += noise * uAmount;
-                
                 gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
             }
         `;
 
-        // Sombreador de Fragmentos corregido con directivas de precisión estrictas
         const fragmentShader = `
             precision mediump float;
-            precision mediump int;
-
             uniform vec3 uColor1;
             uniform vec3 uColor2;
             uniform vec3 uColor3;
@@ -658,26 +551,26 @@
             }
 
             void main() {
-                // Escalar el valor del ruido de la onda para obtener transiciones hiper-suaves
                 float n = vNoise * 0.4 + 0.5;
                 n = clamp(n, 0.0, 1.0);
-                
-                // Interpolación fluida de los 5 colores usando smoothstep para sedosidad extrema
                 vec3 color = mix(uColor1, uColor2, smoothstep(0.0, 0.25, n));
                 color = mix(color, uColor3, smoothstep(0.25, 0.5, n));
                 color = mix(color, uColor4, smoothstep(0.5, 0.75, n));
                 color = mix(color, uColor5, smoothstep(0.75, 1.0, n));
-                
-                // Grano analógico para una estética orgánica
                 float grain = (rand(vUv + fract(uTime * 0.002)) - 0.5) * uGrain;
                 color += vec3(grain);
-                
                 gl_FragColor = vec4(color, 1.0);
             }
         `;
 
+
+        // ====================== WEBGL INIT ======================
+
+        let scene, camera, renderer, geometry, material, mesh, orbitControls;
+        const canvas = document.getElementById('webgl-canvas');
+
         function initWebGL() {
-            const gradParams = store.getState().gradient;
+            const gp = store.getState().gradient;
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color('#07080c');
@@ -685,35 +578,27 @@
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.set(0, 0, 4.2);
 
-            renderer = new THREE.WebGLRenderer({
-                canvas: canvas,
-                antialias: true,
-                preserveDrawingBuffer: true
-            });
-            
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+            renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
             renderer.setSize(window.innerWidth, window.innerHeight);
 
-            // Generar malla plana con gran subdivisión para el oleaje 3D fluido
-            geometry = new THREE.PlaneGeometry(6, 4, gradParams.meshSegments.width, gradParams.meshSegments.height);
+            geometry = new THREE.PlaneGeometry(6, 4, gp.meshSegments.width, gp.meshSegments.height);
 
             const uniforms = {
-                uTime: { value: 0.0 },
-                uFrequency: { value: new THREE.Vector2(gradParams.noiseFrequency.x, gradParams.noiseFrequency.y) },
-                uAmount: { value: gradParams.noiseAmount },
-                uGrain: { value: gradParams.noiseGrain },
-                uColor1: { value: new THREE.Color(gradParams.colors[0]) },
-                uColor2: { value: new THREE.Color(gradParams.colors[1]) },
-                uColor3: { value: new THREE.Color(gradParams.colors[2]) },
-                uColor4: { value: new THREE.Color(gradParams.colors[3]) },
-                uColor5: { value: new THREE.Color(gradParams.colors[4]) }
+                uTime:     { value: 0.0 },
+                uFrequency:{ value: new THREE.Vector2(gp.noiseFrequency.x, gp.noiseFrequency.y) },
+                uAmount:   { value: gp.noiseAmount },
+                uGrain:    { value: gp.noiseGrain },
+                uColor1:   { value: new THREE.Color(gp.colors[0]) },
+                uColor2:   { value: new THREE.Color(gp.colors[1]) },
+                uColor3:   { value: new THREE.Color(gp.colors[2]) },
+                uColor4:   { value: new THREE.Color(gp.colors[3]) },
+                uColor5:   { value: new THREE.Color(gp.colors[4]) }
             };
 
             material = new THREE.ShaderMaterial({
-                vertexShader: vertexShader,
-                fragmentShader: fragmentShader,
-                uniforms: uniforms,
-                wireframe: gradParams.wireframe,
+                vertexShader, fragmentShader, uniforms,
+                wireframe: gp.wireframe,
                 side: THREE.DoubleSide
             });
 
@@ -721,7 +606,6 @@
             mesh.rotation.x = -0.3;
             scene.add(mesh);
 
-            // Orbit controls activo por defecto
             orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
             orbitControls.enableDamping = true;
             orbitControls.dampingFactor = 0.05;
@@ -731,26 +615,23 @@
             orbitControls.enabled = true;
         }
 
-        // Bucle de Render
+        // ====================== ANIMATION LOOP ======================
+
         const ticker = new gd();
         let totalElapsed = 0;
 
         ticker.on("tick", () => {
-            const gradParams = store.getState().gradient;
-            totalElapsed += gradParams.speed;
+            const gp = store.getState().gradient;
+            // FIX: was gradParams.speed — correct key is noiseSpeed
+            totalElapsed += gp.noiseSpeed;
 
             if (material) {
                 material.uniforms.uTime.value = totalElapsed;
             }
-
-            if (orbitControls && orbitControls.enabled) {
-                orbitControls.update();
-            }
-
-            renderer.render(scene, camera);
+            if (orbitControls && orbitControls.enabled) orbitControls.update();
+            if (renderer && scene && camera) renderer.render(scene, camera);
         });
 
-        // Redimensionamiento
         const resizer = new vd();
         resizer.on("resize", () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -759,76 +640,69 @@
         });
 
 
-        // ================= SINCRONIZACIÓN DE INTERFAZ DE USUARIO =================
+        // ====================== UI RENDERING ======================
 
         function renderColorsControls() {
-            const gradParams = store.getState().gradient;
+            const gp = store.getState().gradient;
             const container = document.getElementById("colors-container");
             container.innerHTML = "";
-
-            gradParams.colors.forEach((col, i) => {
-                const index = i + 1;
+            gp.colors.forEach((col, i) => {
                 const div = document.createElement("div");
                 div.className = "flex items-center justify-between bg-[#1f2029]/40 p-2 rounded border border-white/5";
                 div.innerHTML = `
-                    <span class="text-xs text-slate-400">Color ${index}</span>
+                    <span class="text-xs text-slate-400">Color ${i + 1}</span>
                     <div class="flex items-center gap-2">
-                        <span id="hex-${index}" class="mono-font text-xs uppercase text-slate-300">${col}</span>
-                        <input type="color" id="col-${index}" value="${col}" class="w-8 h-8 rounded border-0 cursor-pointer bg-transparent">
+                        <span id="hex-${i+1}" class="mono-font text-xs uppercase text-slate-300">${col}</span>
+                        <input type="color" id="col-${i+1}" value="${col}" class="w-8 h-8 rounded border-0 cursor-pointer bg-transparent">
                     </div>
                 `;
                 container.appendChild(div);
-
-                document.getElementById(`col-${index}`).addEventListener("input", (e) => {
-                    const newHex = e.target.value;
-                    store.setGradientColor(i, newHex);
+                document.getElementById(`col-${i+1}`).addEventListener("input", (e) => {
+                    store.setSelectedPreset("custom");
+                    store.setGradientColor(i, e.target.value);
                 });
             });
+            // FIX: re-run lucide icons after injecting new DOM
+            lucide.createIcons();
         }
 
-        // Actualizar elementos visuales físicos de la barra lateral
         function updateUI() {
-            const gradParams = store.getState().gradient;
-            
-            document.getElementById("noise-amount").value = gradParams.noiseAmount;
-            document.getElementById("val-amount").textContent = gradParams.noiseAmount.toFixed(2);
+            const gp = store.getState().gradient;
 
-            document.getElementById("noise-speed").value = gradParams.noiseSpeed;
-            document.getElementById("val-speed").textContent = gradParams.noiseSpeed.toFixed(3);
+            document.getElementById("noise-amount").value = gp.noiseAmount;
+            document.getElementById("val-amount").textContent = gp.noiseAmount.toFixed(2);
 
-            document.getElementById("noise-freq-x").value = gradParams.noiseFrequency.x;
-            document.getElementById("val-freq-x").textContent = gradParams.noiseFrequency.x.toFixed(1);
+            // FIX: was referencing noiseSpeed but displaying gp.noiseSpeed (correct now)
+            document.getElementById("noise-speed").value = gp.noiseSpeed;
+            document.getElementById("val-speed").textContent = gp.noiseSpeed.toFixed(3);
 
-            document.getElementById("noise-freq-y").value = gradParams.noiseFrequency.y;
-            document.getElementById("val-freq-y").textContent = gradParams.noiseFrequency.y.toFixed(1);
+            document.getElementById("noise-freq-x").value = gp.noiseFrequency.x;
+            document.getElementById("val-freq-x").textContent = gp.noiseFrequency.x.toFixed(1);
 
-            document.getElementById("noise-grain").value = gradParams.noiseGrain;
-            document.getElementById("val-grain").textContent = gradParams.noiseGrain.toFixed(2);
+            document.getElementById("noise-freq-y").value = gp.noiseFrequency.y;
+            document.getElementById("val-freq-y").textContent = gp.noiseFrequency.y.toFixed(1);
 
-            document.getElementById("mesh-segments").value = gradParams.meshSegments.width;
-            document.getElementById("mesh-segments-val").textContent = gradParams.meshSegments.width;
+            document.getElementById("noise-grain").value = gp.noiseGrain;
+            document.getElementById("val-grain").textContent = gp.noiseGrain.toFixed(2);
 
-            const wireframeToggle = document.getElementById('wireframe-toggle');
-            const wireframeDot = document.getElementById('wireframe-dot');
-            if (gradParams.wireframe) {
-                wireframeToggle.classList.add('bg-indigo-600');
-                wireframeToggle.classList.remove('bg-slate-700');
-                wireframeDot.classList.add('translate-x-5');
-            } else {
-                wireframeToggle.classList.add('bg-slate-700');
-                wireframeToggle.classList.remove('bg-indigo-600');
-                wireframeDot.classList.remove('translate-x-5');
-            }
+            document.getElementById("mesh-segments").value = gp.meshSegments.width;
+            document.getElementById("mesh-segments-val").textContent = gp.meshSegments.width;
+
+            // Wireframe toggle UI
+            const wfBtn = document.getElementById('wireframe-toggle');
+            const wfDot = document.getElementById('wireframe-dot');
+            wfBtn.classList.toggle('bg-indigo-600', gp.wireframe);
+            wfBtn.classList.toggle('bg-slate-700', !gp.wireframe);
+            wfDot.classList.toggle('translate-x-5', gp.wireframe);
 
             document.getElementById("preset-select").value = store.getSelectedPreset();
 
             if (material) {
-                material.wireframe = gradParams.wireframe;
-                material.uniforms.uAmount.value = gradParams.noiseAmount;
-                material.uniforms.uFrequency.value.set(gradParams.noiseFrequency.x, gradParams.noiseFrequency.y);
-                material.uniforms.uGrain.value = gradParams.noiseGrain;
-                
-                gradParams.colors.forEach((col, idx) => {
+                material.wireframe = gp.wireframe;
+                material.uniforms.uAmount.value = gp.noiseAmount;
+                material.uniforms.uFrequency.value.set(gp.noiseFrequency.x, gp.noiseFrequency.y);
+                material.uniforms.uGrain.value = gp.noiseGrain;
+                gp.colors.forEach((col, idx) => {
                     material.uniforms[`uColor${idx + 1}`].value.set(col);
                     const hexSpan = document.getElementById(`hex-${idx + 1}`);
                     const colInput = document.getElementById(`col-${idx + 1}`);
@@ -840,38 +714,41 @@
             updateURLHash();
         }
 
-        store.on("change", updateUI);
-
-
-        // ================= ASIGNACIÓN DE EVENTOS EN INTERFAZ DE USUARIO =================
-
-        document.getElementById("noise-amount").addEventListener("input", (e) => {
-            store.setGradientValue("noiseAmount", parseFloat(e.target.value));
-        });
-        document.getElementById("noise-speed").addEventListener("input", (e) => {
-            store.setGradientValue("noiseSpeed", parseFloat(e.target.value));
-        });
-        document.getElementById("noise-freq-x").addEventListener("input", (e) => {
-            store.setGradientNoiseFrequency("x", parseFloat(e.target.value));
-        });
-        document.getElementById("noise-freq-y").addEventListener("input", (e) => {
-            store.setGradientNoiseFrequency("y", parseFloat(e.target.value));
-        });
-        document.getElementById("noise-grain").addEventListener("input", (e) => {
-            store.setGradientValue("noiseGrain", parseFloat(e.target.value));
+        // FIX: renderColorsControls only on full resets/preset changes to avoid losing focus
+        store.on("change", ({ section }) => {
+            if (section === "all" || section === "preset") {
+                renderColorsControls();
+            }
+            updateUI();
         });
 
-        document.getElementById("wireframe-toggle").addEventListener("click", () => {
-            const current = store.getState().gradient.wireframe;
-            store.setGradientValue("wireframe", !current);
-        });
 
-        document.getElementById("mesh-segments").addEventListener("change", (e) => {
+        // ====================== EVENT HANDLERS ======================
+
+        document.getElementById("noise-amount").addEventListener("input", e =>
+            store.setGradientValue("noiseAmount", parseFloat(e.target.value)));
+
+        // FIX: key is noiseSpeed, not speed
+        document.getElementById("noise-speed").addEventListener("input", e =>
+            store.setGradientValue("noiseSpeed", parseFloat(e.target.value)));
+
+        document.getElementById("noise-freq-x").addEventListener("input", e =>
+            store.setGradientNoiseFrequency("x", parseFloat(e.target.value)));
+
+        document.getElementById("noise-freq-y").addEventListener("input", e =>
+            store.setGradientNoiseFrequency("y", parseFloat(e.target.value)));
+
+        document.getElementById("noise-grain").addEventListener("input", e =>
+            store.setGradientValue("noiseGrain", parseFloat(e.target.value)));
+
+        document.getElementById("wireframe-toggle").addEventListener("click", () =>
+            store.setGradientValue("wireframe", !store.getState().gradient.wireframe));
+
+        document.getElementById("mesh-segments").addEventListener("change", e => {
             const segments = parseInt(e.target.value);
             store.state.gradient.meshSegments.width = segments;
             store.state.gradient.meshSegments.height = segments;
             document.getElementById("mesh-segments-val").textContent = segments;
-
             if (geometry) geometry.dispose();
             geometry = new THREE.PlaneGeometry(6, 4, segments, segments);
             mesh.geometry = geometry;
@@ -880,21 +757,17 @@
         document.getElementById("randomize-btn").addEventListener("click", () => {
             store.setSelectedPreset("custom");
             store.randomizeGradientColors();
+            renderColorsControls(); // FIX: re-render swatches after randomize
+            updateUI();
         });
 
         const orbitToggle = document.getElementById("orbit-toggle");
         const orbitDot = document.getElementById("orbit-dot");
         orbitToggle.addEventListener("click", () => {
             orbitControls.enabled = !orbitControls.enabled;
-            if (orbitControls.enabled) {
-                orbitToggle.classList.add('bg-indigo-600');
-                orbitToggle.classList.remove('bg-slate-700');
-                orbitDot.classList.add('translate-x-5');
-            } else {
-                orbitToggle.classList.add('bg-slate-700');
-                orbitToggle.classList.remove('bg-indigo-600');
-                orbitDot.classList.remove('translate-x-5');
-            }
+            orbitToggle.classList.toggle('bg-indigo-600', orbitControls.enabled);
+            orbitToggle.classList.toggle('bg-slate-700', !orbitControls.enabled);
+            orbitDot.classList.toggle('translate-x-5', orbitControls.enabled);
         });
 
         document.getElementById("reset-camera-btn").addEventListener("click", () => {
@@ -906,76 +779,67 @@
         });
 
 
-        // ================= PRESETS DEFINIDOS DE LA INTERFAZ =================
+        // ====================== PRESETS ======================
 
         const presetsDefinition = {
             default: {
                 wireframe: false,
-                colors: ["#8ecae6", "#219ebc", "#023047", "#ffb703", "#fb8500"],
-                noiseAmount: 0.20,
-                noiseSpeed: 0.02,
-                noiseFrequency: { x: 3.0, y: 6.0 },
-                noiseGrain: 0.15
+                colors: ["#8ecae6","#219ebc","#023047","#ffb703","#fb8500"],
+                noiseAmount: 0.20, noiseSpeed: 0.02,
+                noiseFrequency: { x: 3.0, y: 6.0 }, noiseGrain: 0.15
             },
             sunrise: {
                 wireframe: false,
-                colors: ["#f72585", "#7209b7", "#3f37c9", "#4361ee", "#4cc9f0"],
-                noiseAmount: 0.35,
-                noiseSpeed: 0.012,
-                noiseFrequency: { x: 2.2, y: 3.8 },
-                noiseGrain: 0.18
+                colors: ["#f72585","#7209b7","#3f37c9","#4361ee","#4cc9f0"],
+                noiseAmount: 0.35, noiseSpeed: 0.012,
+                noiseFrequency: { x: 2.2, y: 3.8 }, noiseGrain: 0.18
             },
             lagoon: {
                 wireframe: false,
-                colors: ["#00a8c6", "#40c0cb", "#f9f2e7", "#aee239", "#8fbe00"],
-                noiseAmount: 0.40,
-                noiseSpeed: 0.025,
-                noiseFrequency: { x: 4.5, y: 2.0 },
-                noiseGrain: 0.10
+                colors: ["#00a8c6","#40c0cb","#f9f2e7","#aee239","#8fbe00"],
+                noiseAmount: 0.40, noiseSpeed: 0.025,
+                noiseFrequency: { x: 4.5, y: 2.0 }, noiseGrain: 0.10
             },
             ember: {
                 wireframe: false,
-                colors: ["#d90429", "#ef233c", "#edf2f4", "#8d99ae", "#2b2d42"],
-                noiseAmount: 0.28,
-                noiseSpeed: 0.015,
-                noiseFrequency: { x: 5.0, y: 5.0 },
-                noiseGrain: 0.25
+                colors: ["#d90429","#ef233c","#edf2f4","#8d99ae","#2b2d42"],
+                noiseAmount: 0.28, noiseSpeed: 0.015,
+                noiseFrequency: { x: 5.0, y: 5.0 }, noiseGrain: 0.25
             },
             "soft-grid": {
                 wireframe: true,
-                colors: ["#bbbb88", "#ccc68d", "#eedd99", "#eec290", "#eeaa88"],
-                noiseAmount: 0.18,
-                noiseSpeed: 0.008,
-                noiseFrequency: { x: 1.5, y: 2.5 },
-                noiseGrain: 0.08
+                colors: ["#bbbb88","#ccc68d","#eedd99","#eec290","#eeaa88"],
+                noiseAmount: 0.18, noiseSpeed: 0.008,
+                noiseFrequency: { x: 1.5, y: 2.5 }, noiseGrain: 0.08
             }
         };
 
-        document.getElementById("preset-select").addEventListener("change", (e) => {
+        document.getElementById("preset-select").addEventListener("change", e => {
             const target = e.target.value;
             store.setSelectedPreset(target);
             if (presetsDefinition[target]) {
                 store.applyGradientPreset(presetsDefinition[target]);
+                renderColorsControls();
+                updateUI();
             }
         });
 
         document.getElementById("reset-preset-btn").addEventListener("click", () => {
             store.setSelectedPreset("default");
             store.applyGradientPreset(presetsDefinition.default);
+            renderColorsControls();
+            updateUI();
         });
 
 
-        // ================= EXPORTACIÓN 4K UHD =================
+        // ====================== IMAGE EXPORT ======================
 
         document.getElementById("export-img-btn").addEventListener("click", () => {
             const selectedRes = document.getElementById("export-res-select").value;
             let width = 1920, height = 1080;
-            if (selectedRes === "4k") {
-                width = 3840;
-                height = 2160;
-            }
+            if (selectedRes === "4k") { width = 3840; height = 2160; }
 
-            const initialAspect = camera.aspect;
+            const prevAspect = camera.aspect;
             const size = new THREE.Vector2();
             renderer.getSize(size);
 
@@ -991,39 +855,28 @@
             link.click();
             document.body.removeChild(link);
 
-            camera.aspect = initialAspect;
+            camera.aspect = prevAspect;
             camera.updateProjectionMatrix();
             renderer.setSize(size.x, size.y);
-            renderer.render(scene, camera);
         });
 
 
-        // ================= GRABADOR DE VIDEO EN BUCLE =================
+        // ====================== VIDEO EXPORT ======================
 
-        let isRecording = false;
-        let mediaRecorder;
-        let recordedChunks = [];
+        let isRecording = false, mediaRecorder, recordedChunks = [];
 
         document.getElementById("record-video-btn").addEventListener("click", async () => {
             const btn = document.getElementById("record-video-btn");
             const btnSpan = btn.querySelector("span");
-            
-            if (isRecording) {
-                mediaRecorder.stop();
-                return;
-            }
+            if (isRecording) { mediaRecorder.stop(); return; }
 
             recordedChunks = [];
             const selectedRes = document.getElementById("video-res-select").value;
             const duration = parseFloat(document.getElementById("video-duration").value);
-
             let width = 1280, height = 720;
-            if (selectedRes === "1080p") {
-                width = 1920;
-                height = 1080;
-            }
+            if (selectedRes === "1080p") { width = 1920; height = 1080; }
 
-            const initialAspect = camera.aspect;
+            const prevAspect = camera.aspect;
             const size = new THREE.Vector2();
             renderer.getSize(size);
             camera.aspect = width / height;
@@ -1031,56 +884,40 @@
             renderer.setSize(width, height);
 
             const stream = canvas.captureStream(30);
-            
-            const options = { mimeType: 'video/webm;codecs=vp9,opus', videoBitsPerSecond: 8000000 };
-            
             try {
-                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 8000000 });
             } catch (e) {
                 mediaRecorder = new MediaRecorder(stream, { videoBitsPerSecond: 5000000 });
             }
 
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) recordedChunks.push(event.data);
-            };
-
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
             mediaRecorder.onstop = () => {
                 const blob = new Blob(recordedChunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = `gradient-motion-loop-${width}x${height}.webm`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                a.href = url; a.download = `gradient-loop-${width}x${height}.webm`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
 
-                camera.aspect = initialAspect;
+                camera.aspect = prevAspect;
                 camera.updateProjectionMatrix();
                 renderer.setSize(size.x, size.y);
 
                 isRecording = false;
-                btn.classList.add("bg-indigo-600");
-                btn.classList.remove("bg-red-600");
+                btn.classList.add("bg-indigo-600"); btn.classList.remove("bg-red-600");
                 btnSpan.textContent = "Iniciar Grabación";
             };
 
             isRecording = true;
             mediaRecorder.start();
-            btn.classList.remove("bg-indigo-600");
-            btn.classList.add("bg-red-600");
-            
+            btn.classList.remove("bg-indigo-600"); btn.classList.add("bg-red-600");
+
             let timeLeft = duration;
             const interval = setInterval(() => {
-                if (!isRecording) {
-                    clearInterval(interval);
-                    return;
-                }
+                if (!isRecording) { clearInterval(interval); return; }
                 timeLeft -= 0.5;
                 if (timeLeft <= 0) {
                     clearInterval(interval);
-                    if (mediaRecorder.state !== "inactive") {
-                        mediaRecorder.stop();
-                    }
+                    if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
                 } else {
                     btnSpan.textContent = `Grabando (${timeLeft.toFixed(1)}s)`;
                 }
@@ -1088,14 +925,14 @@
         });
 
 
-        // ================= COMPARTIR ENLACE (BASE64) =================
+        // ====================== SHARE LINK ======================
 
         function updateURLHash() {
             try {
                 const gp = store.getState().gradient;
                 const data = {
                     w: gp.wireframe ? 1 : 0,
-                    c: gp.colors.map(col => col.replace('#', '')),
+                    c: gp.colors.map(c => c.replace('#', '')),
                     a: parseFloat(gp.noiseAmount.toFixed(2)),
                     s: parseFloat(gp.noiseSpeed.toFixed(3)),
                     fx: parseFloat(gp.noiseFrequency.x.toFixed(1)),
@@ -1104,23 +941,21 @@
                     m: gp.meshSegments.width,
                     p: store.getSelectedPreset()
                 };
-                const base64 = btoa(JSON.stringify(data));
-                window.history.replaceState(null, null, `#config=${base64}`);
-            } catch (err) {}
+                history.replaceState(null, null, `#config=${btoa(JSON.stringify(data))}`);
+            } catch (e) {}
         }
 
         function loadURLHash() {
             const hash = window.location.hash;
             if (hash && hash.startsWith('#config=')) {
                 try {
-                    const decoded = atob(hash.replace('#config=', ''));
-                    const data = JSON.parse(decoded);
+                    const data = JSON.parse(atob(hash.replace('#config=', '')));
                     if (data) {
                         const gradient = {
                             wireframe: data.w === 1,
-                            colors: data.c.map(hex => '#' + hex),
+                            colors: data.c.map(h => '#' + h),
                             noiseAmount: data.a,
-                            noiseSpeed: data.s,
+                            noiseSpeed: data.s,   // FIX: was stored as `s`, must load as noiseSpeed
                             noiseFrequency: { x: data.fx, y: data.fy },
                             noiseGrain: data.g,
                             meshSegments: { width: data.m, height: data.m }
@@ -1134,19 +969,12 @@
 
         document.getElementById("copy-link-btn").addEventListener("click", () => {
             updateURLHash();
-            const link = window.location.href;
-            
             const temp = document.createElement('input');
-            temp.value = link;
-            document.body.appendChild(temp);
-            temp.select();
-            document.execCommand('copy');
-            document.body.removeChild(temp);
-
+            temp.value = window.location.href;
+            document.body.appendChild(temp); temp.select(); document.execCommand('copy'); document.body.removeChild(temp);
             const toast = document.getElementById('toast');
             toast.classList.remove('translate-y-20', 'opacity-0');
             toast.classList.add('translate-y-0', 'opacity-100');
-
             setTimeout(() => {
                 toast.classList.add('translate-y-20', 'opacity-0');
                 toast.classList.remove('translate-y-0', 'opacity-100');
@@ -1154,39 +982,35 @@
         });
 
 
-        // ================= CARPETAS COLAPSABLES DE LA BARRA LATERAL =================
+        // ====================== COLLAPSIBLE FOLDERS ======================
 
         document.querySelectorAll(".folder-header").forEach(header => {
             header.addEventListener("click", () => {
                 const content = header.nextElementSibling;
                 const icon = header.querySelector("[data-lucide='chevron-down']");
-                
                 content.classList.toggle("collapsed");
-                if (content.classList.contains("collapsed")) {
-                    icon.style.transform = "rotate(-90deg)";
-                } else {
-                    icon.style.transform = "rotate(0deg)";
-                }
+                icon.style.transform = content.classList.contains("collapsed") ? "rotate(-90deg)" : "rotate(0deg)";
             });
         });
 
 
-        // ================= INICIALIZACIÓN =================
+        // ====================== INIT ======================
 
-        window.onload = function() {
-            initWebGL(); 
-            loadURLHash(); 
-            renderColorsControls(); 
-            store.emitChange("all"); 
+        window.onload = function () {
+            initWebGL();
+            loadURLHash();
+            renderColorsControls();
+            updateUI();
 
-            // Controladores del Modal de Información
-            const aboutModal = document.getElementById("about-modal");
-            document.getElementById("about-btn").addEventListener("click", () => aboutModal.classList.remove("hidden"));
-            document.getElementById("close-modal-x").addEventListener("click", () => aboutModal.classList.add("hidden"));
-            document.getElementById("close-modal-btn").addEventListener("click", () => aboutModal.classList.add("hidden"));
-            aboutModal.addEventListener("click", (e) => {
-                if (e.target === aboutModal) aboutModal.classList.add("hidden");
-            });
+            // FIX: initialize Lucide icons after DOM is ready
+            lucide.createIcons();
+
+            // About modal — FIX: use .open class, not .hidden (avoids hidden+flex conflict)
+            const modal = document.getElementById("about-modal");
+            document.getElementById("about-btn").addEventListener("click", () => modal.classList.add("open"));
+            document.getElementById("close-modal-x").addEventListener("click", () => modal.classList.remove("open"));
+            document.getElementById("close-modal-btn").addEventListener("click", () => modal.classList.remove("open"));
+            modal.addEventListener("click", e => { if (e.target === modal) modal.classList.remove("open"); });
         };
     </script>
   </body>
